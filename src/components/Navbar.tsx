@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useEditor } from '../context/EditorContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   Layout, 
   Code2, 
@@ -13,13 +14,15 @@ import {
   FolderOpen,
   Save,
   ExternalLink,
-  FileText
+  FileText,
+  LogOut
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { generateFullDoc } from '../utils/codeGenerator';
 
 export const Navbar: React.FC = () => {
+  const { user, logout } = useAuth();
   const { 
     mode, 
     setMode, 
@@ -264,6 +267,32 @@ export const Navbar: React.FC = () => {
           <Download size={16} />
           ZIP Project ({pages.length} pág)
         </button>
+
+        {user && (
+          <div className="user-profile-badge" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '10px', borderLeft: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.2' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.nome || user.email}
+              </span>
+              <span style={{ fontSize: '10px', color: '#94a3b8', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.email}
+              </span>
+            </div>
+
+            <button
+              className="btn-icon danger"
+              onClick={logout}
+              title="Sair da Conta (Logout)"
+              style={{
+                color: '#f87171',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                background: 'rgba(239, 68, 68, 0.1)'
+              }}
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

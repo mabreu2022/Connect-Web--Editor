@@ -109,7 +109,7 @@ async function registro(req, res) {
       `INSERT INTO TB_FATURAS (FAT_ASS_ID, FAT_USU_ID, FAT_VALOR, FAT_VALOR_LIQ, FAT_STATUS, FAT_VENCTO, FAT_DESCRICAO, FAT_PERIODO)
        VALUES (?, ?, ?, ?, 'pendente', CURRENT_DATE + 3, ?, ?)`,
       [assId, userId, selectedPlano.pla_preco_mes, selectedPlano.pla_preco_mes, 
-       `Plano ${selectedPlano.pla_nome} - PIX enviado: ${comprovantePix || 'Pendente'}`, 
+       `Plano ${selectedPlano.pla_nome} - Comprovante PIX Enviado`, 
        'Mensalidade Inicial']
     );
 
@@ -120,7 +120,7 @@ async function registro(req, res) {
     await db.execute(
       `INSERT INTO TB_TRANSACOES (TRA_FAT_ID, TRA_USU_ID, TRA_VALOR, TRA_TIPO, TRA_METODO, TRA_STATUS, TRA_GATEWAY, TRA_EXTERNAL)
        VALUES (?, ?, ?, 'pagamento', 'PIX', 'pendente', 'pix.js', ?)`,
-      [fatId, userId, selectedPlano.pla_preco_mes, comprovantePix || 'Aguardando Comprovante']
+      [fatId, userId, selectedPlano.pla_preco_mes, Buffer.from(comprovantePix || 'Aguardando Comprovante', 'utf8')]
     );
 
     res.status(201).json({ 

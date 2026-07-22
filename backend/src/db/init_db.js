@@ -116,7 +116,7 @@ const ddlStatements = [
     TRA_METODO    VARCHAR(30),
     TRA_STATUS    VARCHAR(20),
     TRA_GATEWAY   VARCHAR(50),
-    TRA_EXTERNAL  VARCHAR(200),
+    TRA_EXTERNAL  BLOB SUB_TYPE TEXT CHARACTER SET UTF8,
     TRA_DADOS     D_JSON,
     TRA_CRIADO    D_DATETIME DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT PK_TRANSACOES PRIMARY KEY (TRA_ID),
@@ -204,13 +204,13 @@ const ddlStatements = [
   `INSERT INTO TB_CONFIG (CFG_CHAVE, CFG_VALOR) VALUES ('PIX_CIDADE', 'Sao Paulo')`,
 
   `INSERT INTO TB_PLANOS (PLA_NOME, PLA_DESCRICAO, PLA_PRECO_MES, PLA_PRECO_ANO, PLA_MAX_PAG, PLA_MAX_PROJ, PLA_MAX_EXP, PLA_ORDEM, PLA_DESTAQUE, PLA_ATIVO)
-   VALUES ('Gratuito', 'Ideal para explorar a plataforma.', 0, 0, 3, 1, 5, 1, 0, 1)`,
+   VALUES ('Gratuito', 'Grátis por 5 dias para testes.', 0, 0, 3, 1, 5, 1, 0, 1)`,
   `INSERT INTO TB_PLANOS (PLA_NOME, PLA_DESCRICAO, PLA_PRECO_MES, PLA_PRECO_ANO, PLA_MAX_PAG, PLA_MAX_PROJ, PLA_MAX_EXP, PLA_ORDEM, PLA_DESTAQUE, PLA_ATIVO)
    VALUES ('Básico', 'Para freelancers e pequenas empresas.', 49.90, 479.00, 10, 5, 50, 2, 0, 1)`,
   `INSERT INTO TB_PLANOS (PLA_NOME, PLA_DESCRICAO, PLA_PRECO_MES, PLA_PRECO_ANO, PLA_MAX_PAG, PLA_MAX_PROJ, PLA_MAX_EXP, PLA_ORDEM, PLA_DESTAQUE, PLA_ATIVO)
    VALUES ('Profissional', 'Para agências em crescimento com recursos ilimitados.', 99.90, 959.00, -1, 20, -1, 3, 1, 1)`,
   `INSERT INTO TB_PLANOS (PLA_NOME, PLA_DESCRICAO, PLA_PRECO_MES, PLA_PRECO_ANO, PLA_MAX_PAG, PLA_MAX_PROJ, PLA_MAX_EXP, PLA_ORDEM, PLA_DESTAQUE, PLA_ATIVO)
-   VALUES ('Enterprise', 'Suporte dedicado, SLA e banco de dados exclusivo.', 0, 0, -1, -1, -1, 4, 0, 1)`,
+   VALUES ('Enterprise', 'Suporte dedicado, SLA e banco de dados exclusivo.', 149.90, 1439.00, -1, -1, -1, 4, 0, 1)`,
 
   `INSERT INTO TB_USUARIOS (USU_NOME, USU_EMAIL, USU_SENHA, USU_PERFIL, USU_STATUS, USU_EMAIL_VER)
    VALUES ('Administrador', 'conectsolutions@hotmail.com', '$2a$10$10XBDKEDl8DYzEos5CzeRe/xTeMJ3hw5BW5F0nnYQWBXbYm57J8Q6', 1, 1, 1)`

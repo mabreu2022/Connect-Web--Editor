@@ -185,9 +185,13 @@ export const RegisterPage: React.FC<Props> = ({ onSwitchToLogin }) => {
                   <div style={styles.planName}>{p.pla_nome}</div>
                   <div style={styles.planPrice}>
                     {p.pla_preco_mes === 0 ? 'Grátis' : `R$ ${p.pla_preco_mes.toFixed(2).replace('.', ',')}`}
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>/mês</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>
+                      {p.pla_preco_mes === 0 ? ' (5 dias)' : '/mês'}
+                    </span>
                   </div>
-                  <div style={styles.planDesc}>{p.pla_descricao}</div>
+                  <div style={styles.planDesc}>
+                    {p.pla_id === 1 ? 'Grátis por 5 dias para testes da plataforma.' : p.pla_descricao}
+                  </div>
                 </div>
               ))}
             </div>

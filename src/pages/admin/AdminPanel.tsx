@@ -40,6 +40,16 @@ export const AdminPanel: React.FC = () => {
   const [viewComprovante, setViewComprovante] = useState<{ url: string; usuario: Usuario } | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
 
+  const downloadComprovante = () => {
+    if (!viewComprovante?.url) return;
+    const a = document.createElement('a');
+    a.href = viewComprovante.url;
+    a.download = `comprovante_pix_usuario_${viewComprovante.usuario.usu_id}_${(viewComprovante.usuario.usu_nome || 'cliente').replace(/\s+/g, '_')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const loadTab = async (t: Tab) => {
     setLoading(true);
     try {
@@ -125,7 +135,8 @@ export const AdminPanel: React.FC = () => {
           ))}
         </nav>
         <div style={S.sidebarUser}>
-          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>{user?.nome}</div>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc' }}>{user?.nome}</div>
+          <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', wordBreak: 'break-all' }}>{user?.email}</div>
           <button onClick={logout} style={S.logoutBtn}>🚪 Sair</button>
         </div>
       </aside>
@@ -227,7 +238,7 @@ export const AdminPanel: React.FC = () => {
                     <td style={S.td}>{u.usu_empresa || '—'}</td>
                     <td style={S.td}><span style={S.badge2}>{u.pla_nome || 'Básico'}</span></td>
                     <td style={S.td}>
-                      {u.comprovante_pix && u.comprovante_pix.startsWith('data:') ? (
+                      {u.comprovante_pix && u.comprovante_pix !== 'Pendente' && u.comprovante_pix !== 'Aguardando Comprovante' ? (
                         <button onClick={() => { setZoomLevel(1); setViewComprovante({ url: u.comprovante_pix!, usuario: u }); }} style={S.viewBtn}>
                           🖼️ Ver Comprovante (Zoom)
                         </button>
@@ -426,18 +437,21 @@ export const AdminPanel: React.FC = () => {
               <button onClick={() => setViewComprovante(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}>✖</button>
             </div>
 
-            {/* Toolbar do Zoom */}
+            {/* Toolbar do Zoom e Download */}
             <div style={S.zoomToolbar}>
               <button onClick={() => setZoomLevel(z => Math.min(z + 0.25, 3))} style={S.zoomBtn}>🔍 Zoom In (+)</button>
               <span style={{ color: '#a5b4fc', fontSize: '13px', fontWeight: '700' }}>{Math.round(zoomLevel * 100)}%</span>
               <button onClick={() => setZoomLevel(z => Math.max(z - 0.25, 0.5))} style={S.zoomBtn}>🔍 Zoom Out (-)</button>
               <button onClick={() => setZoomLevel(1)} style={S.zoomBtn}>🔄 Reset Zoom</button>
-              <a href={viewComprovante.url} target="_blank" rel="noreferrer" style={{ ...S.zoomBtn, textDecoration: 'none' }}>🌐 Abrir em Nova Aba</a>
+              <button onClick={downloadComprovante} style={{ ...S.zoomBtn, background: '#10b981', color: '#fff', fontWeight: '700' }}>
+                📥 Baixar para HD
+              </button>
+              <a href={viewComprovante.url} target="_blank" rel="noreferrer" style={{ ...S.zoomBtn, textDecoration: 'none' }}>🌐 Nova Aba</a>
             </div>
 
             {/* Container da Imagem com Scroll + Zoom */}
             <div style={S.imageViewerBox}>
-              {viewComprovante.url.startsWith('data:image') ? (
+              {viewComprovante.url.startsWith('data:image') || viewComprovante.url.startsWith('data:') ? (
                 <img 
                   src={viewComprovante.url} 
                   alt="Comprovante de Pagamento" 
@@ -456,12 +470,17 @@ export const AdminPanel: React.FC = () => {
               )}
             </div>
 
-            {/* Rodapé do Modal com Ação de Aprovação */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #1e293b' }}>
+            {/* Rodapé do Modal com Ação de Aprovação e Download */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #1e293b', gap: '12px' }}>
               <button onClick={() => setViewComprovante(null)} style={S.backBtn}>Fechar</button>
-              <button onClick={() => aprovarPix(viewComprovante.usuario.usu_id)} style={S.approveBtnLarge}>
-                ✅ Aprovar PIX & Liberar Acesso do Cliente
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={downloadComprovante} style={{ ...S.approveBtnLarge, background: '#10b981' }}>
+                  📥 Baixar Comprovante (HD)
+                </button>
+                <button onClick={() => aprovarPix(viewComprovante.usuario.usu_id)} style={S.approveBtnLarge}>
+                  ✅ Aprovar PIX & Liberar Acesso do Cliente
+                </button>
+              </div>
             </div>
           </div>
         </div>

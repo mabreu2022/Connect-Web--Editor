@@ -23,6 +23,38 @@ function getPool() {
   return pool;
 }
 
+function readBlobField(blobFn) {
+  return new Promise((resolve) => {
+    if (typeof blobFn !== 'function') return resolve(blobFn);
+    blobFn((err, name, stream) => {
+      if (err || !stream) return resolve(null);
+      let chunks = [];
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('end', () => {
+        try {
+          resolve(Buffer.concat(chunks).toString('utf8'));
+        } catch (e) {
+          resolve(null);
+        }
+      });
+      stream.on('error', () => resolve(null));
+    });
+  });
+}
+
+async function resolveBlobsInRows(rows) {
+  if (!Array.isArray(rows)) return rows;
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    for (const key of Object.keys(row)) {
+      if (typeof row[key] === 'function') {
+        row[key] = await readBlobField(row[key]);
+      }
+    }
+  }
+  return rows;
+}
+
 /**
  * Executa uma query e retorna os resultados como array de objetos
  */
@@ -30,10 +62,15 @@ function query(sql, params = []) {
   return new Promise((resolve, reject) => {
     pool.get((err, db) => {
       if (err) return reject(new Error('Erro ao obter conexão: ' + err.message));
-      db.query(sql, params, (err, result) => {
+      db.query(sql, params, async (err, result) => {
         db.detach();
         if (err) return reject(new Error('Erro na query: ' + err.message));
-        resolve(result || []);
+        try {
+          const resolved = await resolveBlobsInRows(result || []);
+          resolve(resolved);
+        } catch (blobErr) {
+          resolve(result || []);
+        }
       });
     });
   });
