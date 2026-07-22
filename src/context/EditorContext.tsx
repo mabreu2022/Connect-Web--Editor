@@ -668,6 +668,63 @@ function sendChatMessage(event) {
     }
   };
 
+  // Auxiliar para sincronizar menus de navegação em todas as páginas do projeto
+  const syncAllMenusWithPages = (currentPages: PageItem[]): PageItem[] => {
+    const ensureLinksInTree = (nodesList: ElementNode[], pagesList: PageItem[]) => {
+      for (const node of nodesList) {
+        if (node.type === 'nav') {
+          const menuContainer = node.children.find(
+            c => c.type === 'container' || c.label === 'Menu Links'
+          );
+          if (menuContainer) {
+            // Remove links para páginas que não existem mais
+            menuContainer.children = menuContainer.children.filter(link => {
+              if (link.type === 'link' && link.attributes.href) {
+                const targetHref = link.attributes.href;
+                if (targetHref.startsWith('http') || targetHref.startsWith('//') || targetHref.startsWith('#')) {
+                  return true;
+                }
+                return pagesList.some(p => p.fileName === targetHref);
+              }
+              return true;
+            });
+
+            // Adiciona links para páginas novas que faltam no menu
+            pagesList.forEach((page) => {
+              const hasLink = menuContainer.children.some(
+                link => link.type === 'link' && link.attributes.href === page.fileName
+              );
+              if (!hasLink) {
+                menuContainer.children.push({
+                  id: 'el_' + Math.random().toString(36).substring(2, 9),
+                  type: 'link',
+                  tagName: 'a',
+                  label: `Link ${menuContainer.children.length + 1}`,
+                  content: page.title || page.fileName.replace('.html', ''),
+                  attributes: { href: page.fileName },
+                  styles: { color: '#94a3b8', textDecoration: 'none' },
+                  children: []
+                });
+              }
+            });
+          }
+        }
+        if (node.children && node.children.length > 0) {
+          ensureLinksInTree(node.children, pagesList);
+        }
+      }
+    };
+
+    return currentPages.map(page => {
+      const clonedNodes = JSON.parse(JSON.stringify(page.nodes));
+      ensureLinksInTree(clonedNodes, currentPages);
+      return {
+        ...page,
+        nodes: clonedNodes
+      };
+    });
+  };
+
   // Multi-Page functions
   const addPage = (fileName: string, title: string) => {
     const cleanFileName = fileName.endsWith('.html') ? fileName : `${fileName}.html`;
@@ -684,9 +741,12 @@ function sendChatMessage(event) {
         ogImage: ''
       }
     };
-    setPages([...pages, newPage]);
+    const updatedPages = syncAllMenusWithPages([...pages, newPage]);
+    setPages(updatedPages);
     setActivePageId(newPage.id);
-    setHistory([newPage.nodes]);
+
+    const createdPageNodes = updatedPages.find(p => p.id === newPage.id)?.nodes || newPage.nodes;
+    setHistory([createdPageNodes]);
     setHistoryIdx(0);
     setSelectedId(null);
   };
@@ -697,10 +757,12 @@ function sendChatMessage(event) {
       return;
     }
     const filtered = pages.filter(p => p.id !== id);
-    setPages(filtered);
+    const updatedPages = syncAllMenusWithPages(filtered);
+    setPages(updatedPages);
     if (activePageId === id) {
-      setActivePageId(filtered[0].id);
-      setHistory([filtered[0].nodes]);
+      const fallbackPage = updatedPages[0];
+      setActivePageId(fallbackPage.id);
+      setHistory([fallbackPage.nodes]);
       setHistoryIdx(0);
     }
   };
