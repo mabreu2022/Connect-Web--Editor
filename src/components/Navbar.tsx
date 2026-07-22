@@ -15,11 +15,13 @@ import {
   Save,
   ExternalLink,
   FileText,
-  LogOut
+  LogOut,
+  Bot
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { generateFullDoc } from '../utils/codeGenerator';
+import { BotConfigModal } from './Bot/BotConfigModal';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -38,7 +40,15 @@ export const Navbar: React.FC = () => {
     activePageId,
     switchPage,
     rawCss,
-    rawJs
+    rawJs,
+    isBotModalOpen,
+    setIsBotModalOpen,
+    currentProjectId,
+    projectsList,
+    selectProject,
+    createProject,
+    deleteProject,
+    saveProjectToDb
   } = useEditor();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -114,6 +124,20 @@ export const Navbar: React.FC = () => {
     await handleExportZip();
   };
 
+  const handleSaveAction = async () => {
+    if (user) {
+      try {
+        await saveProjectToDb();
+        alert('💾 Projeto salvo com sucesso no banco de dados!');
+      } catch (err) {
+        console.error('Erro ao salvar projeto:', err);
+        alert('Erro ao salvar o projeto no banco de dados.');
+      }
+    } else {
+      await handleSaveAllPages();
+    }
+  };
+
   const handleLiveBrowserPreview = () => {
     const fullDoc = getFullDocument();
     const blob = new Blob([fullDoc], { type: 'text/html;charset=utf-8' });
@@ -146,35 +170,87 @@ export const Navbar: React.FC = () => {
         onChange={handleFileChange}
       />
 
-      <div className="brand-logo">
-        <FileCode2 size={24} />
-        <span>Connect Web Editor</span>
-        <span className="tag">Dreamweaver</span>
-      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="brand-logo">
+          <FileCode2 size={24} />
+          <span>Connect Web Editor</span>
+        </div>
 
-      <div className="active-page-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(99, 102, 241, 0.12)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
-        <FileText size={15} style={{ color: 'var(--accent-secondary)' }} />
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Página Ativa:</span>
-        <select
-          value={activePageId}
-          onChange={(e) => switchPage(e.target.value)}
-          style={{
-            background: 'transparent',
-            color: '#38bdf8',
-            border: 'none',
-            fontWeight: 700,
-            fontSize: '13px',
-            cursor: 'pointer',
-            outline: 'none'
-          }}
-          title="Página que está sendo editada no projeto"
-        >
-          {pages.map((p) => (
-            <option key={p.id} value={p.id} style={{ background: '#0f172a', color: '#fff' }}>
-              📄 {p.fileName} — {p.title}
-            </option>
-          ))}
-        </select>
+        {user && (
+          <div className="active-page-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.12)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+            <FolderOpen size={15} style={{ color: '#10b981' }} />
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Projeto:</span>
+            <select
+              value={currentProjectId || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'new') {
+                  const name = prompt('Nome do novo projeto:');
+                  if (name) createProject(name);
+                } else if (val === 'delete') {
+                  if (currentProjectId && confirm('Tem certeza que deseja excluir o projeto atual? Todas as páginas dele serão apagadas.')) {
+                    deleteProject(currentProjectId);
+                  }
+                } else if (val) {
+                  selectProject(parseInt(val, 10));
+                }
+              }}
+              style={{
+                background: 'transparent',
+                color: '#10b981',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+              title="Selecione o projeto ativo ou crie um novo"
+            >
+              {projectsList.map((p) => {
+                const idVal = p.pro_id !== undefined ? p.pro_id : p.PRO_ID;
+                const nameVal = p.pro_nome !== undefined ? p.pro_nome : p.PRO_NOME;
+                return (
+                  <option key={idVal} value={idVal} style={{ background: '#0f172a', color: '#fff' }}>
+                    📁 {nameVal}
+                  </option>
+                );
+              })}
+              <option value="new" style={{ background: '#0f172a', color: '#10b981', fontWeight: 'bold' }}>
+                ➕ Novo Projeto...
+              </option>
+              {projectsList.length > 1 && (
+                <option value="delete" style={{ background: '#0f172a', color: '#ef4444', fontWeight: 'bold' }}>
+                  ❌ Excluir Projeto Atual
+                </option>
+              )}
+            </select>
+          </div>
+        )}
+
+        <div className="active-page-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(99, 102, 241, 0.12)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+          <FileText size={15} style={{ color: 'var(--accent-secondary)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Página Ativa:</span>
+          <select
+            value={activePageId}
+            onChange={(e) => switchPage(e.target.value)}
+            style={{
+              background: 'transparent',
+              color: '#38bdf8',
+              border: 'none',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+            title="Página que está sendo editada no projeto"
+          >
+            {pages.map((p) => (
+              <option key={p.id} value={p.id} style={{ background: '#0f172a', color: '#fff' }}>
+                📄 {p.fileName} — {p.title}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="nav-center-controls">
@@ -205,79 +281,96 @@ export const Navbar: React.FC = () => {
       </div>
 
       <div className="nav-actions">
-        <button 
-          className="btn-icon" 
-          onClick={handleOpenClick} 
-          title="Abrir Arquivo HTML do Disco"
-        >
-          <FolderOpen size={16} />
-        </button>
+        {/* Grupo 1: Arquivos e Salvamento */}
+        <div className="toolbar-group">
+          <button 
+            className="btn-icon" 
+            onClick={handleOpenClick} 
+            title="Abrir Arquivo HTML do Disco"
+          >
+            <FolderOpen size={15} />
+          </button>
+          <div className="toolbar-divider"></div>
+          <button 
+            className="btn-icon" 
+            onClick={handleSaveAction} 
+            title={user ? `Salvar projeto no Banco de Dados (Nuvem)` : `Salvar TODAS as ${pages.length} Páginas no Disco (Local)`}
+            style={user ? { color: '#10b981' } : {}}
+          >
+            <Save size={15} />
+          </button>
+          <div className="toolbar-divider"></div>
+          <button 
+            className="btn-icon" 
+            onClick={handleLiveBrowserPreview} 
+            title="Visualizar Página ao Vivo no Navegador (Nova Aba)"
+            style={{ color: '#06b6d4' }}
+          >
+            <ExternalLink size={15} />
+          </button>
+        </div>
 
-        <button 
-          className="btn-icon" 
-          onClick={handleSaveAllPages} 
-          title={`Salvar TODAS as ${pages.length} Páginas do Projeto no Disco`}
-        >
-          <Save size={16} />
-        </button>
+        {/* Grupo 2: Histórico e Edição */}
+        <div className="toolbar-group">
+          <button 
+            className="btn-icon" 
+            disabled={!canUndo} 
+            onClick={undo} 
+            title="Desfazer (Ctrl+Z)"
+          >
+            <RotateCcw size={15} />
+          </button>
+          <div className="toolbar-divider"></div>
+          <button 
+            className="btn-icon" 
+            disabled={!canRedo} 
+            onClick={redo} 
+            title="Refazer (Ctrl+Y)"
+          >
+            <RotateCw size={15} />
+          </button>
+          <div className="toolbar-divider"></div>
+          <button 
+            className="btn-icon" 
+            onClick={clearCanvas} 
+            title="Limpar Canvas"
+            style={{ color: '#ef4444' }}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
 
-        <button 
-          className="btn-icon" 
-          onClick={handleLiveBrowserPreview} 
-          title="Visualizar Página ao Vivo no Navegador (Nova Aba)"
-          style={{ color: '#06b6d4' }}
-        >
-          <ExternalLink size={16} />
-        </button>
+        {/* Grupo 3: Assistentes e Configurações */}
+        <div className="toolbar-group">
+          <button 
+            className="btn-icon" 
+            onClick={() => setIsBotModalOpen(true)} 
+            title="Configurar Bot & QAP WhatsApp"
+            style={{ color: '#818cf8' }}
+          >
+            <Bot size={15} />
+          </button>
+          <div className="toolbar-divider"></div>
+          <button 
+            className="btn-icon" 
+            onClick={() => loadTemplate('template-login')}
+            title="Carregar Template de Login"
+            style={{ color: '#fbbf24' }}
+          >
+            <Sparkles size={15} />
+          </button>
+        </div>
 
-        <button 
-          className="btn-icon" 
-          disabled={!canUndo} 
-          onClick={undo} 
-          title="Desfazer (Ctrl+Z)"
-        >
-          <RotateCcw size={16} />
-        </button>
-        <button 
-          className="btn-icon" 
-          disabled={!canRedo} 
-          onClick={redo} 
-          title="Refazer (Ctrl+Y)"
-        >
-          <RotateCw size={16} />
-        </button>
-
-        <button 
-          className="btn-icon" 
-          onClick={() => loadTemplate('template-login')}
-          title="Carregar Template de Login"
-        >
-          <Sparkles size={16} />
-        </button>
-
-        <button 
-          className="btn-icon" 
-          onClick={clearCanvas} 
-          title="Limpar Canvas"
-        >
-          <Trash2 size={16} />
-        </button>
-
-        <button className="btn-export" onClick={handleExportZip}>
-          <Download size={16} />
-          ZIP Project ({pages.length} pág)
+        <button className="btn-export" onClick={handleExportZip} style={{ padding: '6px 12px', fontSize: '12px', height: '32px' }}>
+          <Download size={14} />
+          ZIP ({pages.length} pág)
         </button>
 
         {user && (
-          <div className="user-profile-badge" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '10px', borderLeft: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', lineHeight: '1.2' }}>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.nome || user.email}
-              </span>
-              <span style={{ fontSize: '10px', color: '#94a3b8', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.email}
-              </span>
-            </div>
+          <div className="user-profile-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '8px', borderLeft: '1px solid var(--border-color)' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#f8fafc', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user.nome || user.email}>
+              👤 {user.nome || user.email.split('@')[0]}
+            </span>
 
             <button
               className="btn-icon danger"
@@ -286,14 +379,18 @@ export const Navbar: React.FC = () => {
               style={{
                 color: '#f87171',
                 borderColor: 'rgba(239, 68, 68, 0.3)',
-                background: 'rgba(239, 68, 68, 0.1)'
+                background: 'rgba(239, 68, 68, 0.1)',
+                width: '28px',
+                height: '28px'
               }}
             >
-              <LogOut size={16} />
+              <LogOut size={13} />
             </button>
           </div>
         )}
       </div>
+
+      <BotConfigModal isOpen={isBotModalOpen} onClose={() => setIsBotModalOpen(false)} />
     </header>
   );
 };

@@ -1340,6 +1340,234 @@ export function createDefaultNode(type: ComponentType): ElementNode {
         ]
       };
 
+    case 'widget-chat':
+      return {
+        id,
+        type,
+        tagName: 'div',
+        label: 'Widget Chat & WebRTC Vídeo',
+        attributes: { 
+          class: 'cwe-webrtc-widget',
+          'data-qap-phone': '5511999998888',
+          'data-qap-start': '08:00',
+          'data-qap-end': '18:00',
+          'data-qap-out-msg': '🔴 Nosso atendimento ao vivo funciona das 08:00 às 18:00. Deixe sua mensagem!'
+        },
+        styles: {
+          margin: '32px auto',
+          maxWidth: '460px',
+          width: '100%',
+          backgroundColor: '#0f172a',
+          color: '#f8fafc',
+          borderRadius: '16px',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          fontFamily: 'system-ui, sans-serif'
+        },
+        children: [
+          {
+            id: generateId(),
+            type: 'container',
+            tagName: 'div',
+            label: 'Cabeçalho do Chat',
+            attributes: {},
+            styles: {
+              padding: '14px 18px',
+              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            },
+            children: [
+              {
+                id: generateId(),
+                type: 'container',
+                tagName: 'div',
+                label: 'Status do Atendente',
+                attributes: {},
+                styles: { display: 'flex', alignItems: 'center', gap: '10px' },
+                children: [
+                  { id: generateId(), type: 'heading', tagName: 'span', label: 'Avatar', content: '💬', attributes: {}, styles: { fontSize: '20px' }, children: [] },
+                  {
+                    id: generateId(),
+                    type: 'container',
+                    tagName: 'div',
+                    label: 'Texto Status',
+                    attributes: {},
+                    styles: { display: 'flex', flexDirection: 'column' },
+                    children: [
+                      { id: generateId(), type: 'heading', tagName: 'strong', label: 'Nome Atendimento', content: 'Suporte Ao Vivo WebRTC', attributes: {}, styles: { fontSize: '14px', color: '#ffffff' }, children: [] },
+                      { id: generateId(), type: 'paragraph', tagName: 'span', label: 'Status Online', content: '🟢 Atendente Online', attributes: {}, styles: { fontSize: '11px', color: '#a7f3d0' }, children: [] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: generateId(),
+            type: 'container',
+            tagName: 'div',
+            label: 'Container Vídeo WebRTC',
+            attributes: { id: 'webrtc-video-box' },
+            styles: {
+              padding: '12px',
+              backgroundColor: '#1e293b',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              borderBottom: '1px solid #334155'
+            },
+            children: [
+              {
+                id: generateId(),
+                type: 'container',
+                tagName: 'div',
+                label: 'Tela de Vídeo',
+                attributes: {},
+                styles: { position: 'relative', height: '200px', backgroundColor: '#000000', borderRadius: '10px', overflow: 'hidden' },
+                children: [
+                  {
+                    id: generateId(),
+                    type: 'paragraph',
+                    tagName: 'video',
+                    label: 'Stream Remoto (Atendente)',
+                    attributes: { id: 'cwe-remote-video', autoplay: 'true', playsinline: 'true' },
+                    styles: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+                    children: []
+                  },
+                  {
+                    id: generateId(),
+                    type: 'paragraph',
+                    tagName: 'video',
+                    label: 'Stream Local (Visitante)',
+                    attributes: { id: 'cwe-local-video', autoplay: 'true', playsinline: 'true', muted: 'true' },
+                    styles: { position: 'absolute', bottom: '8px', right: '8px', width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '2px solid rgba(255,255,255,0.4)', backgroundColor: '#1e293b' },
+                    children: []
+                  },
+                  {
+                    id: generateId(),
+                    type: 'paragraph',
+                    tagName: 'div',
+                    label: 'Placeholder aguardando',
+                    attributes: { id: 'cwe-video-placeholder' },
+                    content: '📹 Aguardando conexão...',
+                    styles: { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', color: '#64748b', fontSize: '12px', fontFamily: 'system-ui,sans-serif', textAlign: 'center', pointerEvents: 'none' },
+                    children: []
+                  }
+                ]
+              },
+              {
+                id: generateId(),
+                type: 'container',
+                tagName: 'div',
+                label: 'Controles WebRTC',
+                attributes: {},
+                styles: { display: 'flex', gap: '6px', justifyContent: 'center' },
+                children: [
+                  {
+                    id: generateId(),
+                    type: 'button',
+                    tagName: 'button',
+                    label: 'Iniciar Vídeo',
+                    content: '📹 Iniciar Vídeo',
+                    attributes: { id: 'btn-start-video', onclick: 'startWebRTCVideo()' },
+                    styles: { padding: '6px 12px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' },
+                    children: []
+                  },
+                  {
+                    id: generateId(),
+                    type: 'button',
+                    tagName: 'button',
+                    label: 'Áudio Mudo',
+                    content: '🎙️ Áudio',
+                    attributes: { id: 'btn-toggle-audio', onclick: 'toggleWebRTCAudio()' },
+                    styles: { padding: '6px 12px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' },
+                    children: []
+                  },
+                  {
+                    id: generateId(),
+                    type: 'button',
+                    tagName: 'button',
+                    label: 'Desconectar',
+                    content: '🔴 Encerrar',
+                    attributes: { id: 'btn-stop-webrtc', onclick: 'stopWebRTC()' },
+                    styles: { padding: '6px 12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' },
+                    children: []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: generateId(),
+            type: 'container',
+            tagName: 'div',
+            label: 'Histórico de Mensagens',
+            attributes: { id: 'cwe-chat-messages' },
+            styles: {
+              padding: '14px',
+              height: '180px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              backgroundColor: '#0f172a'
+            },
+            children: [
+              {
+                id: generateId(),
+                type: 'paragraph',
+                tagName: 'div',
+                label: 'Mensagem Atendente',
+                content: '👋 Olá! Seja bem-vindo ao suporte ao vivo. Como posso te ajudar com o seu projeto hoje?',
+                attributes: {},
+                styles: { backgroundColor: '#1e293b', color: '#f1f5f9', padding: '10px 12px', borderRadius: '12px 12px 12px 2px', maxWidth: '85%', fontSize: '12px' },
+                children: []
+              }
+            ]
+          },
+          {
+            id: generateId(),
+            type: 'form',
+            tagName: 'form',
+            label: 'Formulário de Envio Chat',
+            attributes: { id: 'cwe-chat-form', onsubmit: 'sendChatMessage(event)' },
+            styles: {
+              padding: '10px 14px',
+              backgroundColor: '#1e293b',
+              borderTop: '1px solid #334155',
+              display: 'flex',
+              gap: '8px'
+            },
+            children: [
+              {
+                id: generateId(),
+                type: 'input-text',
+                tagName: 'input',
+                label: 'Campo Mensagem',
+                attributes: { id: 'cwe-chat-input', type: 'text', placeholder: 'Digite sua mensagem...' },
+                styles: { flex: '1', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#ffffff', padding: '8px 12px', fontSize: '12px' },
+                children: []
+              },
+              {
+                id: generateId(),
+                type: 'button',
+                tagName: 'button',
+                label: 'Botão Enviar',
+                content: 'Enviar 🚀',
+                attributes: { type: 'submit' },
+                styles: { padding: '8px 14px', backgroundColor: '#6366f1', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' },
+                children: []
+              }
+            ]
+          }
+        ]
+      };
+
     default:
       return {
         id,

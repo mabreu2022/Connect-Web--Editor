@@ -233,4 +233,147 @@ router.put('/config-pix', authenticate, adminOnly, async (req, res) => {
   }
 });
 
+// GET /api/admin/config-bot - Busca configurações do Bot e QAP WhatsApp do Firebird DB
+router.get('/config-bot', async (req, res) => {
+  try {
+    let qapPhone = '';
+    let startTime = '08:00';
+    let endTime = '18:00';
+    let outOfHoursMessage = '🔴 Nosso atendimento ao vivo funciona das 08:00 às 18:00. Deixe sua mensagem!';
+    let backendPublicUrl = process.env.BACKEND_PUBLIC_URL || '';
+    let faqList = [
+      { id: 'faq_1', keywords: ['preço', 'valor', 'plano'], reply: '💡 Nossos planos custam a partir de R$ 149,90/mês com 5 dias grátis.' },
+      { id: 'faq_2', keywords: ['suporte', 'atendimento', 'contato'], reply: '📞 Atendimento de Segunda a Sexta das 08h às 18h.' }
+    ];
+
+    try {
+      // Garante tabela TB_CONFIG no Firebird DB
+      await db.execute('CREATE TABLE TB_CONFIG (CFG_CHAVE VARCHAR(50) PRIMARY KEY, CFG_VALOR VARCHAR(2000))');
+    } catch (e) {}
+
+    try {
+      const rows = await db.query('SELECT CFG_CHAVE, CFG_VALOR FROM TB_CONFIG');
+      rows.forEach(r => {
+        const k = (r.cfg_chave || r.CFG_CHAVE || '').toUpperCase();
+        const v = r.cfg_valor || r.CFG_VALOR || '';
+        if (k === 'QAP_PHONE') qapPhone = v;
+        if (k === 'BOT_START_TIME') startTime = v;
+        if (k === 'BOT_END_TIME') endTime = v;
+        if (k === 'BOT_OUT_HOURS_MSG') outOfHoursMessage = v;
+        if (k === 'BACKEND_PUBLIC_URL') backendPublicUrl = v;
+        if (k === 'BOT_FAQ_JSON' && v) {
+          try { faqList = JSON.parse(v); } catch (err) {}
+        }
+      });
+    } catch (e) {}
+
+    res.json({ qapPhone, startTime, endTime, outOfHoursMessage, faqList, backendPublicUrl });
+  } catch (err) {
+    console.error('[GET BOT CONFIG DB]', err);
+    res.status(500).json({ error: 'Erro ao buscar configuração do Bot.' });
+  }
+});
+
+// PUT /api/admin/config-bot - Grava configurações do Bot e QAP WhatsApp no Firebird DB
+router.put('/config-bot', async (req, res) => {
+  try {
+    const { qapPhone, startTime, endTime, outOfHoursMessage, faqList, backendPublicUrl } = req.body;
+
+    try {
+      await db.execute('CREATE TABLE TB_CONFIG (CFG_CHAVE VARCHAR(50) PRIMARY KEY, CFG_VALOR VARCHAR(2000))');
+    } catch (e) {}
+
+    const saveCfg = async (k, v) => {
+      const ex = await db.query('SELECT CFG_CHAVE FROM TB_CONFIG WHERE CFG_CHAVE = ?', [k]);
+      if (ex && ex.length > 0) {
+        await db.execute('UPDATE TB_CONFIG SET CFG_VALOR = ? WHERE CFG_CHAVE = ?', [v || '', k]);
+      } else {
+        await db.execute('INSERT INTO TB_CONFIG (CFG_CHAVE, CFG_VALOR) VALUES (?, ?)', [k, v || '']);
+      }
+    };
+
+    if (qapPhone !== undefined) await saveCfg('QAP_PHONE', qapPhone);
+    if (startTime !== undefined) await saveCfg('BOT_START_TIME', startTime);
+    if (endTime !== undefined) await saveCfg('BOT_END_TIME', endTime);
+    if (outOfHoursMessage !== undefined) await saveCfg('BOT_OUT_HOURS_MSG', outOfHoursMessage);
+    if (faqList !== undefined) await saveCfg('BOT_FAQ_JSON', JSON.stringify(faqList));
+    if (backendPublicUrl !== undefined) await saveCfg('BACKEND_PUBLIC_URL', backendPublicUrl);
+
+    res.json({ message: 'Configurações do Bot e QAP gravadas com sucesso no banco de dados Firebird!' });
+  } catch (err) {
+    console.error('[SAVE BOT CONFIG DB]', err);
+    res.status(500).json({ error: 'Erro ao gravar configurações do Bot no Firebird DB.' });
+  }
+});
+
+const qapService = require('../services/qapService');
+
+// POST /api/admin/qap/call - Inicia chamada de vídeo/áudio via QAP Messenger API
+router.post('/qap/call', async (req, res) => {
+  try {
+    const { phone, type = 'video' } = req.body;
+    const result = await qapService.startCall(phone, type);
+    res.json(result);
+  } catch (err) {
+    console.error('[QAP CALL ERROR]', err);
+    res.status(500).json({ error: 'Erro ao iniciar chamada QAP.' });
+  }
+});
+
+// POST /api/admin/qap/message - Envia mensagem via QAP Messenger API
+router.post('/qap/message', async (req, res) => {
+  try {
+    const { phone, message } = req.body;
+    const result = await qapService.sendMessage(phone, message);
+    res.json(result);
+  } catch (err) {
+    console.error('[QAP MESSAGE ERROR]', err);
+    res.status(500).json({ error: 'Erro ao enviar mensagem QAP.' });
+  }
+});
+
+
+// POST /api/admin/qap/video-call - Cria sala WebRTC e envia link pelo QAP para o atendente
+router.post('/qap/video-call', async (req, res) => {
+  try {
+    const { phone, siteUrl } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Número do atendente não informado.' });
+
+    const { v4: uuidv4 } = require('uuid');
+    const roomId = uuidv4();
+
+    // Busca BACKEND_PUBLIC_URL do banco de dados (configurado no Painel Admin)
+    let backendPublicUrl = process.env.BACKEND_PUBLIC_URL || '';
+    try {
+      const rows = await db.query("SELECT CFG_VALOR FROM TB_CONFIG WHERE CFG_CHAVE = 'BACKEND_PUBLIC_URL'");
+      if (rows && rows.length > 0) {
+        const dbUrl = rows[0].cfg_valor || rows[0].CFG_VALOR || '';
+        if (dbUrl) backendPublicUrl = dbUrl;
+      }
+    } catch (e) { /* Ignora se tabela não existir ainda */ }
+
+    const base = backendPublicUrl || siteUrl || `http://localhost:${process.env.PORT || 3001}`;
+    const callLink = `${base}/call?room=${roomId}`;
+
+    // Envia mensagem QAP para o atendente com o link da sala
+    const msgText =
+      `📹 *CHAMADA DE VÍDEO RECEBIDA*\n` +
+      `Um visitante do seu site quer falar com você!\n\n` +
+      `▶️ Toque aqui para atender:\n${callLink}\n\n` +
+      `_(Abra o link no navegador do celular para iniciar o vídeo)_`;
+
+    const qapResult = await qapService.sendMessage(phone, msgText);
+
+    res.json({
+      success: true,
+      roomId,
+      callLink,
+      qap: qapResult
+    });
+  } catch (err) {
+    console.error('[QAP VIDEO-CALL ERROR]', err);
+    res.status(500).json({ error: 'Erro ao criar sala de chamada.', detail: err.message });
+  }
+});
+
 module.exports = router;

@@ -1,6 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const http = require('http');
+const path = require('path');
+const { Server } = require('socket.io');
+const { setupWebRTCSignaling } = require('./socket/webrtcSignaling');
 
 const authRoutes = require('./routes/auth.routes');
 const planosRoutes = require('./routes/planos.routes');
@@ -10,7 +14,18 @@ const projetosRoutes = require('./routes/projetos.routes');
 const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// Socket.IO para sinalização WebRTC
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
+  path: '/socket.io'
+});
+setupWebRTCSignaling(io);
 
 // Middlewares globais
 const allowedOrigins = [
@@ -23,18 +38,20 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true);
-    }
+    callback(null, true);
   },
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Rotas
+// Servir a página de chamada de vídeo (atendente abre no celular)
+app.use(express.static(path.join(__dirname, '../public')));
+app.get('/call', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/call.html'));
+});
+
+// Rotas API
 app.use('/api/auth', authRoutes);
 app.use('/api/planos', planosRoutes);
 app.use('/api/assinaturas', assinaturasRoutes);
@@ -53,6 +70,8 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor' });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`✅ Backend Connect SaaS rodando na porta ${PORT}`);
+  console.log(`📹 WebRTC Signaling ativo em ws://localhost:${PORT}/socket.io`);
+  console.log(`🔗 Sala de chamada disponível em http://localhost:${PORT}/call`);
 });

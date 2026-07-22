@@ -27,7 +27,8 @@ import {
   MessageSquareQuote,
   PanelBottom,
   Megaphone,
-  Star
+  Star,
+  Video
 } from 'lucide-react';
 
 interface PaletteItemDef {
@@ -74,9 +75,10 @@ const PALETTE_ITEMS: PaletteItemDef[] = [
   { type: 'nav', label: 'Navegação Bar', category: 'ui', icon: <Navigation size={20} /> },
   { type: 'hero', label: 'Hero Section', category: 'ui', icon: <Sparkles size={20} /> },
 
-  // Templates
+  // Templates & WebRTC
   { type: 'template-login', label: 'Form de Login', category: 'templates', icon: <Sparkles size={20} /> },
-  { type: 'template-contact', label: 'Form de Contato', category: 'templates', icon: <Sparkles size={20} /> }
+  { type: 'template-contact', label: 'Form de Contato', category: 'templates', icon: <Sparkles size={20} /> },
+  { type: 'widget-chat', label: 'Chat & WebRTC Vídeo', category: 'templates', icon: <Video size={20} /> }
 ];
 
 export const ComponentPalette: React.FC = () => {

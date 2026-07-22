@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useEditor } from '../../context/EditorContext';
 import type { ElementNode } from '../../types/editor';
-import { Sliders, Settings, Trash2, Copy, Database, ListPlus, ChevronRight, Link as LinkIcon, Upload, Image as ImageIcon } from 'lucide-react';
+import { Sliders, Settings, Trash2, Copy, Database, ListPlus, ChevronRight, Link as LinkIcon, Upload, Image as ImageIcon, Bot } from 'lucide-react';
 
 export const PropertyInspector: React.FC = () => {
   const { 
@@ -14,7 +14,10 @@ export const PropertyInspector: React.FC = () => {
     removeNode, 
     duplicateNode, 
     setRawJs,
-    pages 
+    pages,
+    botConfig,
+    updateBotConfig,
+    setIsBotModalOpen
   } = useEditor();
 
   const imgInputRef = useRef<HTMLInputElement>(null);
@@ -201,6 +204,108 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
       </div>
+
+      {/* Editor Específico para Widget Chat & WebRTC / QAP */}
+      {(node.type === 'widget-chat' || (node.attributes.class && node.attributes.class.includes('cwe-webrtc-widget'))) && (
+        <div className="inspector-section" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+          <div className="section-label" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '12px' }}>
+            <Bot size={16} />
+            📹 Configuração QAP — Vídeo Atendimento
+          </div>
+
+          <div className="field-group" style={{ marginBottom: '12px' }}>
+            <label style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>
+              📞 Número QAP do Atendente <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <input
+                type="tel"
+                id="qap-phone-input-inspector"
+                className="field-input"
+                placeholder="ex: 5511945457934"
+                defaultValue={node.attributes['data-qap-phone'] || botConfig.qapPhone || ''}
+                style={{ flex: 1, padding: '8px 10px', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+              />
+              <button
+                title="Salvar número no componente"
+                onClick={() => {
+                  const input = document.getElementById('qap-phone-input-inspector') as HTMLInputElement;
+                  const val = input?.value?.trim();
+                  if (!val) return;
+                  updateNodeAttributes(node.id, { 'data-qap-phone': val });
+                  updateBotConfig({ qapPhone: val });
+                  input.style.borderColor = '#10b981';
+                  input.style.boxShadow = '0 0 0 2px rgba(16,185,129,0.3)';
+                  setTimeout(() => {
+                    input.style.borderColor = '#334155';
+                    input.style.boxShadow = 'none';
+                  }, 2000);
+                }}
+                style={{ padding: '8px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}
+              >
+                💾 Salvar
+              </button>
+            </div>
+            <span style={{ fontSize: '10px', color: '#a7f3d0', marginTop: '4px', display: 'block' }}>
+              Número salvo: <strong style={{ color: '#fff' }}>{node.attributes['data-qap-phone'] || botConfig.qapPhone || '(não configurado)'}</strong>
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: '#94a3b8' }}>Início (Abertura):</label>
+              <input
+                type="time"
+                className="field-input"
+                value={node.attributes['data-qap-start'] || botConfig.startTime || '08:00'}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateNodeAttributes(node.id, { 'data-qap-start': val });
+                  updateBotConfig({ startTime: val });
+                }}
+                style={{ width: '100%', padding: '6px', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: '#94a3b8' }}>Fim (Fechamento):</label>
+              <input
+                type="time"
+                className="field-input"
+                value={node.attributes['data-qap-end'] || botConfig.endTime || '18:00'}
+                onChange={e => {
+                  const val = e.target.value;
+                  updateNodeAttributes(node.id, { 'data-qap-end': val });
+                  updateBotConfig({ endTime: val });
+                }}
+                style={{ width: '100%', padding: '6px', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '12px' }}
+              />
+            </div>
+          </div>
+
+          <div className="field-group" style={{ marginBottom: '10px' }}>
+            <label style={{ fontSize: '11px', color: '#94a3b8' }}>Mensagem Fora de Horário:</label>
+            <textarea
+              className="field-input"
+              rows={2}
+              value={node.attributes['data-qap-out-msg'] || botConfig.outOfHoursMessage || ''}
+              onChange={e => {
+                const val = e.target.value;
+                updateNodeAttributes(node.id, { 'data-qap-out-msg': val });
+                updateBotConfig({ outOfHoursMessage: val });
+              }}
+              style={{ width: '100%', padding: '6px', background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#fff', fontSize: '11px' }}
+            />
+          </div>
+
+          <button
+            className="btn-export"
+            style={{ width: '100%', backgroundColor: '#6366f1', justifyContent: 'center', fontSize: '12px', padding: '8px' }}
+            onClick={() => setIsBotModalOpen(true)}
+          >
+            <Bot size={14} /> Gerenciador Completo de FAQ do Bot
+          </button>
+        </div>
+      )}
 
       {/* Editor Específico para Imagem (Upload do HD e Redimensionamento) */}
       {tagLower === 'img' && (

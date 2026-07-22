@@ -27,7 +27,7 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'Fira Code', monospace;
 
-  --navbar-height: 56px;
+  --navbar-height: 60px;
   --sidebar-width: 320px;
   --inspector-width: 340px;
 
@@ -153,7 +153,39 @@ body {
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+}
+
+/* Toolbar Groups (Figma/Photoshop Style) */
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toolbar-group .btn-icon {
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  width: 32px;
+  height: 32px;
+}
+
+.toolbar-group .btn-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toolbar-group .btn-icon:disabled {
+  opacity: 0.25;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background-color: var(--border-color);
 }
 
 .btn-icon {

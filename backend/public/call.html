@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📹 Chamada de Vídeo — QAP Atendimento</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    h1 { font-size: 20px; color: #6366f1; margin-bottom: 8px; text-align: center; }
+    .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 24px; text-align: center; }
+
+    .videos {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .video-box {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #1e293b;
+      border: 2px solid #334155;
+    }
+    .video-box video {
+      width: 320px;
+      max-width: 100%;
+      height: 240px;
+      object-fit: cover;
+      display: block;
+      background: #000;
+    }
+    .video-label {
+      position: absolute;
+      bottom: 8px;
+      left: 12px;
+      font-size: 11px;
+      background: rgba(0,0,0,0.6);
+      padding: 3px 8px;
+      border-radius: 20px;
+      color: #e2e8f0;
+    }
+
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.85; }
+    #btn-answer { background: #10b981; color: #fff; }
+    #btn-end { background: #ef4444; color: #fff; display: none; }
+    #btn-mute { background: #334155; color: #f1f5f9; }
+    #btn-cam { background: #334155; color: #f1f5f9; }
+
+    #status {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #94a3b8;
+      text-align: center;
+      min-height: 24px;
+    }
+    .pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  </style>
+</head>
+<body>
+  <h1>📹 Chamada de Vídeo — Atendimento</h1>
+  <p class="subtitle" id="room-info">Aguardando...</p>
+
+  <div class="videos">
+    <div class="video-box">
+      <video id="remote-video" autoplay playsinline></video>
+      <div class="video-label">👤 Visitante</div>
+    </div>
+    <div class="video-box">
+      <video id="local-video" autoplay playsinline muted></video>
+      <div class="video-label">🎙️ Você</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="btn-answer">✅ Aceitar Chamada</button>
+    <button id="btn-mute">🔇 Mudo</button>
+    <button id="btn-cam">📷 Câmera Off</button>
+    <button id="btn-end">🔴 Encerrar</button>
+  </div>
+
+  <p id="status" class="pulse">⏳ Aguardando o visitante conectar...</p>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('room');
+
+    if (!roomId) {
+      document.getElementById('status').textContent = '❌ Sala não encontrada. Verifique o link.';
+      document.getElementById('btn-answer').disabled = true;
+    } else {
+      document.getElementById('room-info').textContent = 'Sala: ' + roomId;
+    }
+
+    const socket = io({ path: '/socket.io' });
+    let localStream = null;
+    let peerConnection = null;
+    let muted = false;
+    let camOff = false;
+
+    const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    document.getElementById('btn-answer').addEventListener('click', async () => {
+      document.getElementById('btn-answer').style.display = 'none';
+      document.getElementById('btn-end').style.display = '';
+      document.getElementById('status').textContent = '📹 Conectando câmera...';
+
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('InsecureOrigin');
+        }
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('local-video').srcObject = localStream;
+
+        socket.emit('join-room', { roomId, role: 'callee' });
+        document.getElementById('status').textContent = '⏳ Aguardando o visitante...';
+
+        socket.on('offer', async ({ offer }) => {
+          document.getElementById('status').textContent = '🔗 Conectando chamada...';
+
+          peerConnection = new RTCPeerConnection(iceServers);
+
+          localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+
+          peerConnection.ontrack = (e) => {
+            document.getElementById('remote-video').srcObject = e.streams[0];
+            document.getElementById('status').textContent = '✅ Chamada conectada!';
+            document.getElementById('status').classList.remove('pulse');
+          };
+
+          peerConnection.onicecandidate = (e) => {
+            if (e.candidate) {
+              socket.emit('ice-candidate', { roomId, candidate: e.candidate });
+            }
+          };
+
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          socket.emit('answer', { roomId, answer });
+        });
+
+        socket.on('ice-candidate', async ({ candidate }) => {
+          if (peerConnection && candidate) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+        });
+
+        socket.on('peer-left', () => {
+          document.getElementById('status').textContent = '🔴 O visitante encerrou a chamada.';
+          endCall();
+        });
+
+      } catch (err) {
+        if (err.message === 'InsecureOrigin' || err.name === 'TypeError') {
+          const currentHost = window.location.host;
+          document.getElementById('status').innerHTML = 
+            '<div style="background:#7f1d1d; border:1px solid #f87171; padding:12px; border-radius:8px; text-align:left; line-height:1.5; font-size:12px; margin-top:10px;">' +
+            '<strong style="color:#f87171;">⚠️ Bloqueio de Segurança do Navegador (HTTP)</strong><br>' +
+            'O Chrome bloqueia a câmera em conexões HTTP normais para segurança do usuário.<br><br>' +
+            '<strong>Como resolver no seu Celular:</strong><br>' +
+            '1. Abra o Chrome no celular e vá para: <code style="background:#000;padding:2px 4px;border-radius:4px;word-break:break-all;color:#fb7185;">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code><br>' +
+            '2. Mude para <strong>Enabled</strong> e no campo de texto digite: <code style="background:#000;padding:2px 4px;border-radius:4px;color:#fb7185;">http://' + currentHost + '</code><br>' +
+            '3. Clique em <strong>Relaunch</strong> no canto inferior para reiniciar o Chrome.<br>' +
+            '4. Abra novamente o link de chamada e tente novamente!<br><br>' +
+            '<em>Em produção com HTTPS isso funciona nativamente sem nenhuma flag.</em>' +
+            '</div>';
+        } else {
+          document.getElementById('status').textContent = '❌ Erro: ' + err.message;
+        }
+        document.getElementById('btn-answer').style.display = '';
+        document.getElementById('btn-end').style.display = 'none';
+      }
+    });
+
+    document.getElementById('btn-end').addEventListener('click', () => {
+      socket.emit('leave-room', { roomId });
+      endCall();
+    });
+
+    document.getElementById('btn-mute').addEventListener('click', () => {
+      if (!localStream) return;
+      muted = !muted;
+      localStream.getAudioTracks().forEach(t => t.enabled = !muted);
+      document.getElementById('btn-mute').textContent = muted ? '🔊 Ativar Som' : '🔇 Mudo';
+    });
+
+    document.getElementById('btn-cam').addEventListener('click', () => {
+      if (!localStream) return;
+      camOff = !camOff;
+      localStream.getVideoTracks().forEach(t => t.enabled = !camOff);
+      document.getElementById('btn-cam').textContent = camOff ? '📷 Câmera On' : '📷 Câmera Off';
+    });
+
+    function endCall() {
+      if (peerConnection) { peerConnection.close(); peerConnection = null; }
+      if (localStream) { localStream.getTracks().forEach(t => t.stop()); }
+      document.getElementById('local-video').srcObject = null;
+      document.getElementById('remote-video').srcObject = null;
+      document.getElementById('btn-end').style.display = 'none';
+      document.getElementById('btn-answer').style.display = '';
+    }
+  </script>
+</body>
+</html>

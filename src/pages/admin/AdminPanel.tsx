@@ -20,7 +20,7 @@ interface Usuario {
 }
 interface Plano { pla_id: number; pla_nome: string; pla_preco_mes: number; pla_preco_ano: number; pla_max_pag: number; pla_max_proj: number; pla_max_exp: number; pla_ativo: number; pla_destaque: number; }
 
-type Tab = 'dashboard' | 'pendentes' | 'usuarios' | 'planos' | 'faturas' | 'config';
+type Tab = 'dashboard' | 'pendentes' | 'usuarios' | 'planos' | 'faturas' | 'config' | 'bot';
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -35,6 +35,9 @@ export const AdminPanel: React.FC = () => {
 
   // Configurações PIX do Admin
   const [pixConfig, setPixConfig] = useState({ chavePix: '', nomeRecebedor: '', cidadeRecebedor: '' });
+
+  // Configurações do Bot & QAP
+  const [botConfig, setBotConfig] = useState({ qapPhone: '', startTime: '08:00', endTime: '18:00', outOfHoursMessage: '', backendPublicUrl: '' });
 
   // Modal de Comprovante com Zoom
   const [viewComprovante, setViewComprovante] = useState<{ url: string; usuario: Usuario } | null>(null);
@@ -58,6 +61,7 @@ export const AdminPanel: React.FC = () => {
       else if (t === 'planos') { const r = await axios.get(`${API_URL}/admin/planos`); setPlanos(r.data); }
       else if (t === 'faturas') { const r = await axios.get(`${API_URL}/admin/faturas`); setFaturas(r.data); }
       else if (t === 'config') { const r = await axios.get(`${API_URL}/admin/config-pix`); setPixConfig(r.data); }
+      else if (t === 'bot') { const r = await axios.get(`${API_URL}/admin/config-bot`); setBotConfig(r.data); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -89,6 +93,16 @@ export const AdminPanel: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const saveBotConfig = async () => {
+    setLoading(true);
+    try {
+      await axios.put(`${API_URL}/admin/config-bot`, botConfig);
+      setMsgAction('Configurações do Bot & QAP atualizadas com sucesso!');
+      setTimeout(() => setMsgAction(''), 4000);
+    } catch (e) { alert('Erro ao salvar configurações do Bot & QAP.'); }
+    finally { setLoading(false); }
+  };
+
   const toggleStatus = async (id: number, status: number) => {
     await axios.patch(`${API_URL}/admin/usuarios/${id}/status`, { status });
     setUsuarios(prev => prev.map(u => u.usu_id === id ? { ...u, usu_status: status } : u));
@@ -114,6 +128,7 @@ export const AdminPanel: React.FC = () => {
     { id: 'planos', icon: '📦', label: 'Planos' },
     { id: 'faturas', icon: '🧾', label: 'Faturas' },
     { id: 'config', icon: '⚙️', label: 'Config PIX' },
+    { id: 'bot', icon: '🤖', label: 'Bot & QAP' },
   ];
 
   return (
@@ -356,6 +371,54 @@ export const AdminPanel: React.FC = () => {
               <button onClick={savePixConfig} style={{ ...S.submitBtn, width: '100%', marginTop: '12px' }}>
                 💾 Salvar Configurações PIX
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* ===== BOT & QAP WHATSAPP ===== */}
+        {!loading && tab === 'bot' && (
+          <div style={S.panel}>
+            <h3 style={{ color: '#e2e8f0', margin: '0 0 8px' }}>🤖 Configuração Global do Bot & QAP WhatsApp</h3>
+            <p style={{ color: '#94a3b8', fontSize: '13px', margin: '0 0 20px' }}>
+              Configure o número do QAP para atendimento e a URL pública do seu servidor backend para os links das chamadas de vídeo funcionarem no celular.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '500px' }}>
+              <div>
+                <label style={S.label2}>Número do WhatsApp / QAP do Atendente (DDD + Número):</label>
+                <input 
+                  style={S.modalInput} 
+                  value={botConfig.qapPhone} 
+                  placeholder="Ex: 5511999998888"
+                  onChange={e => setBotConfig(b => ({ ...b, qapPhone: e.target.value }))}
+                />
+                <span style={{ fontSize: '11px', color: '#a7f3d0', marginTop: '6px', display: 'block' }}>
+                  📞 Este é o número que recebe as mensagens do bot e os links das chamadas de vídeo.
+                </span>
+              </div>
+
+              <div>
+                <label style={S.label2}>URL Pública do Backend (para o Celular carregar a chamada):</label>
+                <input 
+                  style={S.modalInput} 
+                  value={botConfig.backendPublicUrl} 
+                  placeholder="Ex: http://192.168.15.168:3001"
+                  onChange={e => setBotConfig(b => ({ ...b, backendPublicUrl: e.target.value }))}
+                />
+                <span style={{ fontSize: '11px', color: '#fca5a5', marginTop: '6px', display: 'block' }}>
+                  🔗 Defina como o IP local da sua máquina (ex: <code>http://192.168.15.168:3001</code>) ou domínio de produção para o celular conseguir abrir a chamada.
+                </span>
+              </div>
+
+              <button 
+                onClick={saveBotConfig} 
+                style={{ ...S.submitBtn, width: '100%', marginTop: '8px' }}
+              >
+                💾 Salvar Configurações do Bot & QAP
+              </button>
+
+              <div style={{ background: '#1e293b', padding: '16px', borderRadius: '12px', color: '#fff', fontSize: '13px', marginTop: '8px' }}>
+                💡 Para personalização completa de horários e respostas no Editor Web, clique no botão <strong>🤖 (Bot & QAP)</strong> na barra superior do topo!
+              </div>
             </div>
           </div>
         )}

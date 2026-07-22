@@ -38,10 +38,11 @@ export type ComponentType =
   | 'footer'
   | 'section-cta'
   | 'section-features-list'
-  // Templates
+  // Templates & WebRTC Chat
   | 'template-login'
   | 'template-contact'
-  | 'template-signup';
+  | 'template-signup'
+  | 'widget-chat';
 
 export interface ElementNode {
   id: string;
@@ -81,4 +82,18 @@ export interface ComponentPaletteItem {
 export interface HistoryState {
   nodes: ElementNode[];
   selectedId: string | null;
+}
+
+export interface BotFAQItem {
+  id: string;
+  keywords: string[];
+  reply: string;
+}
+
+export interface BotConfig {
+  qapPhone: string;
+  startTime: string; // ex: "08:00"
+  endTime: string;   // ex: "18:00"
+  outOfHoursMessage: string;
+  faqList: BotFAQItem[];
 }
