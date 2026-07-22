@@ -141,7 +141,25 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [rawHtml, setRawHtml] = useState<string>('');
   const [customCss, setCustomCss] = useState<string>('');
   const [rawCss, setRawCss] = useState<string>('');
-  const [rawJs, setRawJs] = useState<string>('// Adicione seus scripts JavaScript aqui\nconsole.log("Connect Web Editor carregado!");');
+  const [rawJs, setRawJs] = useState<string>(`// Destaca automaticamente no menu a página atual navegada
+document.addEventListener('DOMContentLoaded', function() {
+  var path = window.location.pathname.split('/').pop() || 'index.html';
+  if (!path) path = 'index.html';
+
+  var items = document.querySelectorAll('nav a, nav button, header a, header button');
+  items.forEach(function(item) {
+    var href = item.getAttribute('href') || '';
+    if (!href) {
+      var onclickStr = item.getAttribute('onclick') || '';
+      var match = onclickStr.match(/'([^']+)'/);
+      if (match) href = match[1];
+    }
+    if (href && (href === path || (path === 'index.html' && (href === '#' || href === 'index.html')))) {
+      item.classList.add('active-menu-link');
+    }
+  });
+});
+console.log("Connect Web Editor carregado!");`);
 
   // History Undo/Redo
   const [history, setHistory] = useState<ElementNode[][]>([activePage.nodes]);

@@ -211,6 +211,19 @@ section, footer, nav, header, main, div {
 button, a, input, select, textarea {
   touch-action: manipulation;
 }
+
+/* Marcação do item ativo no menu da página atual */
+nav a.active-menu-link,
+header a.active-menu-link,
+nav button.active-menu-link,
+header button.active-menu-link,
+.active-menu-link {
+  color: #38bdf8 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #38bdf8 !important;
+  padding-bottom: 4px !important;
+  transition: all 0.2s ease;
+}
 `;
 
 export function generateFullDoc(nodes: ElementNode[], customCSS = '', customJS = '', seoTitle = 'Página', seoDescription = '', seoKeywords = ''): string {

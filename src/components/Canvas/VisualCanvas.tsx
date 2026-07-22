@@ -8,7 +8,7 @@ interface RenderNodeProps {
 }
 
 const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
-  const { selectedId, setSelectedId, setHoveredId, updateNode, updateNodeStyles, addNode } = useEditor();
+  const { activePage, selectedId, setSelectedId, setHoveredId, updateNode, updateNodeStyles, addNode } = useEditor();
   const isSelected = selectedId === node.id;
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -78,12 +78,29 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
 
   // Clean React properties from raw HTML attributes
   const { class: rawClass, for: rawFor, ...cleanAttrs } = node.attributes;
-  const computedClassName = `${rawClass || ''} ${isSelected ? 'selected-node' : ''}`.trim();
+  
+  const isActivePageLink = Boolean(
+    activePage && 
+    (tagLower === 'a' || tagLower === 'button') && 
+    (
+      node.attributes.href === activePage.fileName ||
+      (activePage.fileName === 'index.html' && (node.attributes.href === '#' || node.attributes.href === 'index.html'))
+    )
+  );
+
+  const activeStyle = isActivePageLink ? {
+    color: '#38bdf8',
+    fontWeight: '700',
+    borderBottom: '2px solid #38bdf8',
+    paddingBottom: '4px'
+  } : {};
+
+  const computedClassName = `${rawClass || ''} ${isSelected ? 'selected-node' : ''} ${isActivePageLink ? 'active-menu-link' : ''}`.trim();
 
   const elementProps: any = {
     'data-node-id': node.id,
     className: computedClassName,
-    style: { ...node.styles, position: 'relative' },
+    style: { ...node.styles, ...activeStyle, position: 'relative' },
     onClick: handleClick,
     onMouseEnter: (e: React.MouseEvent) => {
       e.stopPropagation();

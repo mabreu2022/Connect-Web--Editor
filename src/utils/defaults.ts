@@ -552,19 +552,12 @@ export function createDefaultNode(type: ComponentType): ElementNode {
               },
               {
                 id: generateId(),
-                type: 'button',
-                tagName: 'button',
-                label: 'Botão Nav',
+                type: 'link',
+                tagName: 'a',
+                label: 'Link 4',
                 content: 'Contato',
                 attributes: { href: 'contato.html' },
-                styles: {
-                  padding: '8px 16px',
-                  backgroundColor: '#4f46e5',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                },
+                styles: { color: '#94a3b8', textDecoration: 'none' },
                 children: []
               }
             ]
