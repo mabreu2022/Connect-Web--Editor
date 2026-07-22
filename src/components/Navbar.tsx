@@ -16,7 +16,8 @@ import {
   ExternalLink,
   FileText,
   LogOut,
-  Bot
+  Bot,
+  HelpCircle
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -360,6 +361,15 @@ export const Navbar: React.FC = () => {
             <Sparkles size={15} />
           </button>
         </div>
+
+        <button 
+          className="btn-icon" 
+          onClick={() => window.open('/manual', '_blank')} 
+          title="Manual e Documentação da Ferramenta"
+          style={{ color: '#a855f7' }}
+        >
+          <HelpCircle size={15} />
+        </button>
 
         <button className="btn-export" onClick={handleExportZip} style={{ padding: '6px 12px', fontSize: '12px', height: '32px' }}>
           <Download size={14} />

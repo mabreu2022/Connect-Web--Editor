@@ -12,6 +12,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { AdminPanel } from './pages/admin/AdminPanel';
+import { ManualPage } from './pages/manual/ManualPage';
 import { Box, Layers, Files } from 'lucide-react';
 
 // ---- Editor principal ----
@@ -60,9 +61,14 @@ const EditorLayout: React.FC = () => {
 };
 
 // ---- Roteador interno (sem instalar react-router) ----
-type Screen = 'login' | 'register' | 'forgot' | 'editor' | 'admin';
+type Screen = 'login' | 'register' | 'forgot' | 'editor' | 'admin' | 'manual';
 
 const AppRouter: React.FC = () => {
+  // Se a rota for /manual, renderiza a documentação sem exigir login
+  if (window.location.pathname.startsWith('/manual')) {
+    return <ManualPage />;
+  }
+
   const { user, loading } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
   const [loginPreset, setLoginPreset] = useState<{ email?: string; password?: string }>({});
