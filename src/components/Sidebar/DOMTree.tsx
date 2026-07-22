@@ -9,18 +9,52 @@ interface TreeNodeProps {
 }
 
 const TreeNodeItem: React.FC<TreeNodeProps> = ({ node, depth }) => {
-  const { selectedId, setSelectedId, removeNode, duplicateNode, hoveredId, setHoveredId } = useEditor();
+  const { selectedId, setSelectedId, removeNode, duplicateNode, hoveredId, setHoveredId, moveNodeInTree } = useEditor();
   const [isOpen, setIsOpen] = React.useState(true);
+  const [isDragOver, setIsDragOver] = React.useState(false);
 
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedId === node.id;
   const isHovered = hoveredId === node.id;
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('existingNodeId', node.id);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const draggedId = e.dataTransfer.getData('existingNodeId');
+    if (draggedId && draggedId !== node.id) {
+      moveNodeInTree(draggedId, node.id, 'after');
+    }
+  };
+
   return (
     <div className="dom-tree-node">
       <div
+        draggable
         className={`tree-item-row ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{
+          paddingLeft: `${depth * 16 + 8}px`,
+          ...(isDragOver ? { borderBottom: '2px solid #38bdf8', background: 'rgba(56, 189, 248, 0.15)' } : {})
+        }}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         onClick={(e) => {
           e.stopPropagation();
           setSelectedId(node.id);

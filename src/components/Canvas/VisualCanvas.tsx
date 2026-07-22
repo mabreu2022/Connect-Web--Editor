@@ -8,17 +8,43 @@ interface RenderNodeProps {
 }
 
 const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
-  const { activePage, selectedId, setSelectedId, setHoveredId, updateNode, updateNodeStyles, addNode } = useEditor();
+  const { activePage, selectedId, setSelectedId, setHoveredId, updateNode, updateNodeStyles, addNode, moveNodeInTree } = useEditor();
   const isSelected = selectedId === node.id;
+  const [dropPosition, setDropPosition] = React.useState<'before' | 'after' | null>(null);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('existingNodeId', node.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const pos = offsetY < rect.height / 2 ? 'before' : 'after';
+    setDropPosition(pos);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.stopPropagation();
+    setDropPosition(null);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const pos = dropPosition || 'after';
+    setDropPosition(null);
+
+    const existingNodeId = e.dataTransfer.getData('existingNodeId');
+    if (existingNodeId && existingNodeId !== node.id) {
+      moveNodeInTree(existingNodeId, node.id, pos);
+      return;
+    }
+
     const typeDropped = e.dataTransfer.getData('text/plain') as ComponentType;
     if (typeDropped) {
       addNode(typeDropped, node.id);
@@ -99,9 +125,15 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
 
   const elementProps: any = {
     'data-node-id': node.id,
+    draggable: true,
     className: computedClassName,
-    style: { ...node.styles, ...activeStyle, position: 'relative' },
-    onClick: handleClick,
+    style: {
+      ...node.styles,
+      ...activeStyle,
+      position: 'relative',
+      ...(dropPosition === 'before' ? { borderTop: '3px solid #38bdf8' } : {}),
+      ...(dropPosition === 'after' ? { borderBottom: '3px solid #38bdf8' } : {})
+    },
     onMouseEnter: (e: React.MouseEvent) => {
       e.stopPropagation();
       setHoveredId(node.id);
@@ -110,7 +142,10 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
       e.stopPropagation();
       setHoveredId(null);
     },
+    onClick: handleClick,
+    onDragStart: handleDragStart,
     onDragOver: handleDragOver,
+    onDragLeave: handleDragLeave,
     onDrop: handleDrop,
     ...(rawFor ? { htmlFor: rawFor } : {}),
     ...cleanAttrs
