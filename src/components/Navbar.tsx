@@ -12,7 +12,8 @@ import {
   FileCode2,
   FolderOpen,
   Save,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -31,6 +32,8 @@ export const Navbar: React.FC = () => {
     openHTMLFile,
     getFullDocument,
     pages,
+    activePageId,
+    switchPage,
     rawCss,
     rawJs
   } = useEditor();
@@ -144,6 +147,31 @@ export const Navbar: React.FC = () => {
         <FileCode2 size={24} />
         <span>Connect Web Editor</span>
         <span className="tag">Dreamweaver</span>
+      </div>
+
+      <div className="active-page-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(99, 102, 241, 0.12)', padding: '5px 12px', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+        <FileText size={15} style={{ color: 'var(--accent-secondary)' }} />
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Página Ativa:</span>
+        <select
+          value={activePageId}
+          onChange={(e) => switchPage(e.target.value)}
+          style={{
+            background: 'transparent',
+            color: '#38bdf8',
+            border: 'none',
+            fontWeight: 700,
+            fontSize: '13px',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
+          title="Página que está sendo editada no projeto"
+        >
+          {pages.map((p) => (
+            <option key={p.id} value={p.id} style={{ background: '#0f172a', color: '#fff' }}>
+              📄 {p.fileName} — {p.title}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="nav-center-controls">

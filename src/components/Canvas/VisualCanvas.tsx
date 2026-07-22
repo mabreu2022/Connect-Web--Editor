@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEditor } from '../../context/EditorContext';
 import type { ElementNode, ComponentType } from '../../types/editor';
-import { Monitor, Tablet, Smartphone } from 'lucide-react';
+import { Monitor, Tablet, Smartphone, FileText } from 'lucide-react';
 
 interface RenderNodeProps {
   node: ElementNode;
@@ -194,7 +194,7 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
 };
 
 export const VisualCanvas: React.FC = () => {
-  const { nodes, viewport, setViewport, addNode, setSelectedId, rawCss } = useEditor();
+  const { nodes, viewport, setViewport, addNode, setSelectedId, rawCss, activePage } = useEditor();
 
   const handleCanvasDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -216,6 +216,14 @@ export const VisualCanvas: React.FC = () => {
       {canvasStyle && <style>{canvasStyle}</style>}
 
       <div className="viewport-bar" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#38bdf8', fontWeight: 600, paddingRight: '12px', borderRight: '1px solid var(--border-color)' }}>
+          <FileText size={14} />
+          <span>{activePage ? activePage.fileName : 'Página Ativa'}</span>
+          {activePage?.title && (
+            <span style={{ color: '#64748b', fontWeight: 400, fontSize: '11px' }}>({activePage.title})</span>
+          )}
+        </div>
+
         <button
           className={`vp-btn ${viewport === 'desktop' ? 'active' : ''}`}
           onClick={() => setViewport('desktop')}

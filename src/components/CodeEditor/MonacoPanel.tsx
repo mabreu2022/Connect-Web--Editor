@@ -3,7 +3,7 @@ import Editor from '@monaco-editor/react';
 import { useEditor } from '../../context/EditorContext';
 
 export const MonacoPanel: React.FC = () => {
-  const { rawHtml, rawCss, rawJs, setRawHtml, setRawCss, setRawJs } = useEditor();
+  const { activePage, rawHtml, rawCss, rawJs, setRawHtml, setRawCss, setRawJs } = useEditor();
   const [activeTab, setActiveTab] = useState<'html' | 'css' | 'js'>('html');
 
   const getLanguage = () => {
@@ -37,7 +37,7 @@ export const MonacoPanel: React.FC = () => {
             className={`code-tab-btn ${activeTab === 'html' ? 'active' : ''}`}
             onClick={() => setActiveTab('html')}
           >
-            index.html
+            {activePage ? activePage.fileName : 'index.html'}
           </button>
           <button
             className={`code-tab-btn ${activeTab === 'css' ? 'active' : ''}`}
