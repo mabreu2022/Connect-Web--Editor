@@ -167,6 +167,31 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
   return (
     <Tag {...elementProps}>
       {isSelected && <span className="node-label-badge">{node.label}</span>}
+      {tagLower === 'a' && (node.attributes.href === '#' || !node.attributes.href) && (
+        <span 
+          title="⚠️ Link Pendente: Clique para definir a página de destino no painel de propriedades" 
+          style={{
+            position: 'absolute',
+            top: '-6px',
+            right: '-6px',
+            background: '#ef4444',
+            color: '#ffffff',
+            fontSize: '10px',
+            fontWeight: 800,
+            borderRadius: '50%',
+            width: '15px',
+            height: '15px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)',
+            zIndex: 10,
+            cursor: 'pointer'
+          }}
+        >
+          !
+        </span>
+      )}
       {isSelected && (
         <div
           className="resize-handle-corner"

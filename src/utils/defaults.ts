@@ -556,7 +556,7 @@ export function createDefaultNode(type: ComponentType): ElementNode {
                 tagName: 'button',
                 label: 'Botão Nav',
                 content: 'Contato',
-                attributes: {},
+                attributes: { href: 'contato.html' },
                 styles: {
                   padding: '8px 16px',
                   backgroundColor: '#4f46e5',

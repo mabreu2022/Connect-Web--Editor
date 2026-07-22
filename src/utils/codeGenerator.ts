@@ -20,7 +20,11 @@ export function generateHTML(nodes: ElementNode[], indentLevel = 0): string {
   let html = '';
 
   for (const node of nodes) {
-    const attrsStr = attributesToString({ ...node.attributes, 'data-node-id': node.id });
+    const mergedAttrs = { ...node.attributes };
+    if (node.tagName.toLowerCase() === 'button' && mergedAttrs.href && mergedAttrs.href !== '#') {
+      mergedAttrs.onclick = `location.href='${mergedAttrs.href}'`;
+    }
+    const attrsStr = attributesToString({ ...mergedAttrs, 'data-node-id': node.id });
     const isSelfClosing = ['input', 'img', 'hr', 'br'].includes(node.tagName.toLowerCase());
 
     if (isSelfClosing) {

@@ -506,15 +506,52 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         )}
 
-        {attrs.href !== undefined && (
-          <div className="field-group">
-            <label>Link (Href)</label>
+        {(attrs.href !== undefined || tagLower === 'a' || tagLower === 'button') && (
+          <div className="field-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Link de Destino (Href)</span>
+              {(attrs.href === '#' || !attrs.href) && (
+                <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 700 }}>⚠️ Pendente</span>
+              )}
+            </label>
+
+            {/* Seletor de Páginas do Projeto */}
+            <select
+              className="field-input"
+              style={{ background: 'var(--bg-card)', color: 'var(--text-main)', border: '1px solid var(--border-color)', fontWeight: 600 }}
+              value={pages.some(p => p.fileName === attrs.href) ? attrs.href : (attrs.href === '#' || !attrs.href ? '#' : 'custom')}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val !== 'custom') {
+                  handleAttrChange('href', val);
+                }
+              }}
+            >
+              <option value="#">⚠️ # (Link Pendente - Sem Destino)</option>
+              <optgroup label="📄 Páginas Criadas no Projeto">
+                {pages.map(p => (
+                  <option key={p.id} value={p.fileName}>
+                    📄 {p.fileName} ({p.title})
+                  </option>
+                ))}
+              </optgroup>
+              <option value="custom">🌐 URL Externa / Personalizada...</option>
+            </select>
+
+            {/* Input para URL manual ou externa */}
             <input
               type="text"
               className="field-input"
+              placeholder="ex: contato.html ou https://..."
               value={attrs.href || ''}
               onChange={(e) => handleAttrChange('href', e.target.value)}
             />
+
+            {(attrs.href === '#' || !attrs.href) && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '8px', padding: '8px 10px', fontSize: '11px', color: '#fca5a5', lineHeight: '1.4' }}>
+                ⚠️ <strong>Link sem destino:</strong> Escolha uma página acima (ex: <code>contato.html</code>) para que a navegação funcione após salvar o site.
+              </div>
+            )}
           </div>
         )}
 

@@ -69,6 +69,38 @@ const initialDefaultPages: PageItem[] = [
     }
   },
   {
+    id: 'p_servicos',
+    fileName: 'servicos.html',
+    title: 'Nossos Serviços',
+    nodes: [
+      createDefaultNode('nav'),
+      createDefaultNode('section')
+    ],
+    seo: {
+      title: 'Nossos Serviços - Soluções Profissionais',
+      description: 'Conheça nossos serviços e soluções.',
+      keywords: 'serviços, produtos, soluções',
+      author: 'Connect Web Editor',
+      ogImage: ''
+    }
+  },
+  {
+    id: 'p_precos',
+    fileName: 'precos.html',
+    title: 'Planos & Preços',
+    nodes: [
+      createDefaultNode('nav'),
+      createDefaultNode('section-pricing')
+    ],
+    seo: {
+      title: 'Planos e Preços - Tabela de Valores',
+      description: 'Confira nossos planos e preços flexíveis.',
+      keywords: 'preços, planos, assinaturas',
+      author: 'Connect Web Editor',
+      ogImage: ''
+    }
+  },
+  {
     id: 'p_contato',
     fileName: 'contato.html',
     title: 'Fale Conosco',
