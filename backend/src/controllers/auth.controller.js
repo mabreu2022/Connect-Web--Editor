@@ -133,44 +133,66 @@ async function registro(req, res) {
   }
 }
 
-// POST /api/auth/recuperar-senha
+// POST /api/auth/recuperar-senha (ou /forgot-password)
 async function recuperarSenha(req, res) {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'E-mail é obrigatório.' });
 
     const rows = await db.query('SELECT USU_ID, USU_NOME FROM TB_USUARIOS WHERE USU_EMAIL = ?', [email]);
-    if (!rows || rows.length === 0) return res.json({ message: 'Se o e-mail existir, você receberá um link de recuperação.' });
+    if (!rows || rows.length === 0) {
+      return res.json({ message: 'Se o e-mail existir, você receberá o código de recuperação.' });
+    }
 
     const user = rows[0];
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiracao = new Date(Date.now() + 3600000);
+    // Gerar código de 6 dígitos numéricos (padrão Conect Task/Trelo)
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiracao = new Date(Date.now() + 3600000); // 1 hora de validade
 
     await db.execute(
       `UPDATE TB_USUARIOS SET USU_TOK_RESET = ?, USU_TOK_EXPIR = ? WHERE USU_ID = ?`,
       [token, expiracao, user.usu_id]
     );
 
-    await emailService.sendPasswordReset(email, user.usu_nome, token);
-    res.json({ message: 'Link de recuperação enviado para seu e-mail.' });
+    try {
+      await emailService.sendPasswordReset(email, user.usu_nome, token);
+    } catch (mailErr) {
+      console.warn('[RECUPERAR SENHA] Falha ao enviar e-mail (mas código gerado):', mailErr.message);
+    }
+
+    res.json({ 
+      message: 'Código de recuperação enviado para seu e-mail!'
+    });
   } catch (err) {
     console.error('[RECUPERAR SENHA]', err);
     res.status(500).json({ error: 'Erro ao enviar e-mail de recuperação.' });
   }
 }
 
-// POST /api/auth/redefinir-senha
+// POST /api/auth/redefinir-senha (ou /reset-password)
 async function redefinirSenha(req, res) {
   try {
-    const { token, novaSenha } = req.body;
-    if (!token || !novaSenha) return res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+    const token = req.body.token || req.body.code;
+    const novaSenha = req.body.novaSenha || req.body.newPassword || req.body.senha;
+    const email = req.body.email;
 
-    const rows = await db.query(
-      `SELECT USU_ID FROM TB_USUARIOS WHERE USU_TOK_RESET = ? AND USU_TOK_EXPIR > CURRENT_TIMESTAMP`,
-      [token]
-    );
+    if (!token || !novaSenha) {
+      return res.status(400).json({ error: 'Código de verificação e nova senha são obrigatórios.' });
+    }
 
-    if (!rows || rows.length === 0) return res.status(400).json({ error: 'Token inválido ou expirado.' });
+    let sql = `SELECT USU_ID FROM TB_USUARIOS WHERE USU_TOK_RESET = ? AND USU_TOK_EXPIR > CURRENT_TIMESTAMP`;
+    let params = [token];
+
+    if (email) {
+      sql = `SELECT USU_ID FROM TB_USUARIOS WHERE USU_TOK_RESET = ? AND USU_EMAIL = ? AND USU_TOK_EXPIR > CURRENT_TIMESTAMP`;
+      params = [token, email];
+    }
+
+    const rows = await db.query(sql, params);
+
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({ error: 'Código de verificação inválido ou expirado.' });
+    }
 
     const senhaHash = await bcrypt.hash(novaSenha, 10);
     await db.execute(

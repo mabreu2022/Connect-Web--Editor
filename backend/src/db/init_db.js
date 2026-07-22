@@ -213,7 +213,7 @@ const ddlStatements = [
    VALUES ('Enterprise', 'Suporte dedicado, SLA e banco de dados exclusivo.', 0, 0, -1, -1, -1, 4, 0, 1)`,
 
   `INSERT INTO TB_USUARIOS (USU_NOME, USU_EMAIL, USU_SENHA, USU_PERFIL, USU_STATUS, USU_EMAIL_VER)
-   VALUES ('Administrador', 'admin@connectwebeditor.com', '$2a$10$10XBDKEDl8DYzEos5CzeRe/xTeMJ3hw5BW5F0nnYQWBXbYm57J8Q6', 1, 1, 1)`
+   VALUES ('Administrador', 'conectsolutions@hotmail.com', '$2a$10$10XBDKEDl8DYzEos5CzeRe/xTeMJ3hw5BW5F0nnYQWBXbYm57J8Q6', 1, 1, 1)`
 ];
 
 fb.attach(options, async (err, db) => {

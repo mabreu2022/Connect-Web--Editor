@@ -4,12 +4,19 @@ import { useAuth } from '../../context/AuthContext';
 interface Props {
   onSwitchToRegister: () => void;
   onSwitchToForgot: () => void;
+  initialEmail?: string;
+  initialPassword?: string;
 }
 
-export const LoginPage: React.FC<Props> = ({ onSwitchToRegister, onSwitchToForgot }) => {
+export const LoginPage: React.FC<Props> = ({ 
+  onSwitchToRegister, 
+  onSwitchToForgot, 
+  initialEmail = '', 
+  initialPassword = '' 
+}) => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const [email, setEmail] = useState(initialEmail);
+  const [senha, setSenha] = useState(initialPassword);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);

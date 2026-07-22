@@ -6,7 +6,9 @@ const { authenticate } = require('../middlewares/auth.middleware');
 router.post('/login', login);
 router.post('/registro', registro);
 router.post('/recuperar-senha', recuperarSenha);
+router.post('/forgot-password', recuperarSenha);
 router.post('/redefinir-senha', redefinirSenha);
+router.post('/reset-password', redefinirSenha);
 router.get('/me', authenticate, me);
 
 module.exports = router;

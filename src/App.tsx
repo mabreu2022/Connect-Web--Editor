@@ -10,6 +10,7 @@ import { MonacoPanel } from './components/CodeEditor/MonacoPanel';
 import { PropertyInspector } from './components/Inspector/PropertyInspector';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { AdminPanel } from './pages/admin/AdminPanel';
 import { Box, Layers, Files } from 'lucide-react';
 
@@ -64,6 +65,7 @@ type Screen = 'login' | 'register' | 'forgot' | 'editor' | 'admin';
 const AppRouter: React.FC = () => {
   const { user, loading } = useAuth();
   const [screen, setScreen] = useState<Screen>('login');
+  const [loginPreset, setLoginPreset] = useState<{ email?: string; password?: string }>({});
 
   // Quando autenticado, navega automaticamente
   if (loading) {
@@ -99,7 +101,25 @@ const AppRouter: React.FC = () => {
 
   // Telas de autenticação
   if (screen === 'register') return <RegisterPage onSwitchToLogin={() => setScreen('login')} />;
-  return <LoginPage onSwitchToRegister={() => setScreen('register')} onSwitchToForgot={() => setScreen('forgot')} />;
+  if (screen === 'forgot') {
+    return (
+      <ForgotPasswordPage
+        onSwitchToLogin={(email, password) => {
+          if (email || password) setLoginPreset({ email, password });
+          setScreen('login');
+        }}
+      />
+    );
+  }
+
+  return (
+    <LoginPage
+      initialEmail={loginPreset.email}
+      initialPassword={loginPreset.password}
+      onSwitchToRegister={() => setScreen('register')}
+      onSwitchToForgot={() => setScreen('forgot')}
+    />
+  );
 };
 
 export function App() {
