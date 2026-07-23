@@ -7,7 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pm2:start": "pm2 start ecosystem.config.cjs && pm2 save",
+    "pm2:stop": "pm2 stop ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs",
+    "pm2:status": "pm2 status",
+    "pm2:logs": "pm2 logs",
+    "pm2:delete": "pm2 delete ecosystem.config.cjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -18,7 +24,7 @@
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
     "lucide-react": "^1.25.0",
-    "node-firebird": "^2.14.0",
+    "node-firebird": "^1.1.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1"

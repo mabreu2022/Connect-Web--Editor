@@ -71,6 +71,66 @@
         
         .file-item { padding: 4px 8px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
         .file-item:last-child { border-bottom: none; }
+
+        /* Modal Estilos */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        .modal-content {
+            background: #252525;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            color: #fff;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .close-btn {
+            font-size: 24px;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .close-btn:hover {
+            color: #fff;
+        }
+        .explorer-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.15s;
+            user-select: none;
+            color: #e0e0e0;
+            font-size: 13px;
+        }
+        .explorer-item:hover {
+            background: #333;
+        }
+        .explorer-item.selected {
+            background: #1976D2;
+            color: #fff;
+        }
+        .explorer-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -134,7 +194,10 @@
             </div>
             <div class="form-group" style="margin-top: 10px;">
                 <label for="fbDatabase">Caminho Absoluto do Banco (.fdb):</label>
-                <input type="text" id="fbDatabase" placeholder="Ex: C:\MeusDados\banco.fdb" style="width: 100%;">
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="fbDatabase" placeholder="Ex: C:\MeusDados\banco.fdb" style="flex-grow: 1;">
+                    <button type="button" onclick="abrirFsModal('fbDatabase', 'file')" style="padding: 0 15px; font-weight: bold; background: #3d3d3d; border: 1px solid #555;">...</button>
+                </div>
             </div>
             
             <h3 style="margin-top: 20px;">📁 Configuração do Sistema Lazarus</h3>
@@ -145,7 +208,10 @@
                 </div>
                 <div class="form-group">
                     <label for="outputDir">Diretório de Geração (Destino):</label>
-                    <input type="text" id="outputDir" value="C:\Projetos Antigravity\Gerador de Programas Lazarus\sistemas_gerados" style="width: 100%;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="outputDir" value="C:\Projetos Antigravity\Gerador de Programas Lazarus\sistemas_gerados" style="flex-grow: 1;">
+                        <button type="button" onclick="abrirFsModal('outputDir', 'folder')" style="padding: 0 15px; font-weight: bold; background: #3d3d3d; border: 1px solid #555;">...</button>
+                    </div>
                 </div>
             </div>
             
@@ -783,7 +849,143 @@ IMPORTANTE: O seu retorno DEVE ser estritamente um objeto JSON válido, sem qual
     setInterval(fetchAllData, 1000);
     setInterval(fetchServerLogs, 2000); 
     fetchAllData();
+
+    // =========================================================================
+    // FILESYSTEM EXPLORER MODAL SYSTEM
+    // =========================================================================
+    let fsModalTargetInputId = '';
+    let fsModalMode = 'file'; // 'file' ou 'folder'
+    let fsCurrentPath = 'C:\\Projetos Antigravity';
+    let fsSelectedPath = '';
+
+    window.abrirFsModal = function(targetInputId, mode) {
+        fsModalTargetInputId = targetInputId;
+        fsModalMode = mode;
+        
+        const currentVal = document.getElementById(targetInputId).value;
+        if (currentVal && currentVal.trim() !== '') {
+            if (mode === 'file') {
+                const lastSlash = Math.max(currentVal.lastIndexOf('\\'), currentVal.lastIndexOf('/'));
+                if (lastSlash !== -1) {
+                    fsCurrentPath = currentVal.substring(0, lastSlash);
+                } else {
+                    fsCurrentPath = 'C:\\Projetos Antigravity';
+                }
+            } else {
+                fsCurrentPath = currentVal;
+            }
+        } else {
+            fsCurrentPath = 'C:\\Projetos Antigravity';
+        }
+        
+        document.getElementById('fsModalTitle').textContent = mode === 'file' ? 'Selecionar Banco de Dados (.FDB)' : 'Selecionar Diretório de Destino';
+        document.getElementById('fsModal').style.display = 'flex';
+        
+        if (mode === 'folder') {
+            document.getElementById('btnFsConfirmar').style.display = 'block';
+            document.getElementById('btnFsConfirmar').onclick = () => confirmarSelecao(fsCurrentPath);
+        } else {
+            document.getElementById('btnFsConfirmar').style.display = 'none';
+        }
+        
+        carregarDiretorio(fsCurrentPath);
+    }
+
+    window.fecharFsModal = function() {
+        document.getElementById('fsModal').style.display = 'none';
+    }
+
+    async function carregarDiretorio(dirPath) {
+        try {
+            const res = await fetch('http://localhost:3002/api/fs/list', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: dirPath })
+            });
+            const data = await res.json();
+            
+            if (data.sucesso) {
+                fsCurrentPath = data.currentPath;
+                document.getElementById('fsCurrentPathInput').value = fsCurrentPath;
+                
+                const listEl = document.getElementById('fsExplorerList');
+                listEl.innerHTML = '';
+                
+                // Pastas
+                data.dirs.forEach(d => {
+                    const item = document.createElement('div');
+                    item.className = 'explorer-item';
+                    item.innerHTML = `<span class="explorer-icon">📁</span> ${d.name}`;
+                    item.onclick = () => {
+                        carregarDiretorio(d.path);
+                    };
+                    listEl.appendChild(item);
+                });
+                
+                // Arquivos (apenas se for modo 'file')
+                if (fsModalMode === 'file') {
+                    data.files.forEach(f => {
+                        if (f.name.toLowerCase().endsWith('.fdb')) {
+                            const item = document.createElement('div');
+                            item.className = 'explorer-item';
+                            item.innerHTML = `<span class="explorer-icon">📄</span> ${f.name}`;
+                            item.onclick = () => {
+                                document.querySelectorAll('.explorer-item').forEach(el => el.classList.remove('selected'));
+                                item.classList.add('selected');
+                                fsSelectedPath = f.path;
+                                document.getElementById('btnFsConfirmar').style.display = 'block';
+                                document.getElementById('btnFsConfirmar').onclick = () => confirmarSelecao(fsSelectedPath);
+                            };
+                            listEl.appendChild(item);
+                        }
+                    });
+                }
+            } else {
+                alert('Erro ao abrir pasta: ' + data.erro);
+            }
+        } catch (e) {
+            alert('Erro de conexão ao carregar pasta.');
+        }
+    }
+
+    window.subirDiretorio = function() {
+        const lastSlash = Math.max(fsCurrentPath.lastIndexOf('\\'), fsCurrentPath.lastIndexOf('/'));
+        if (lastSlash !== -1) {
+            let parent = fsCurrentPath.substring(0, lastSlash);
+            if (parent.endsWith(':')) parent += '\\';
+            carregarDiretorio(parent);
+        }
+    }
+
+    function confirmarSelecao(caminho) {
+        document.getElementById(fsModalTargetInputId).value = caminho;
+        fecharFsModal();
+        logEvent(`Selecionado: ${caminho}`);
+    }
 </script>
+
+<!-- Modal Seletor de Arquivos / Pastas -->
+<div id="fsModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 600px; width: 90%;">
+        <div class="modal-header">
+            <h3 id="fsModalTitle">Selecione o Item</h3>
+            <span class="close-btn" onclick="fecharFsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                <input type="text" id="fsCurrentPathInput" style="flex-grow: 1; background: #222; border: 1px solid #444; color: #fff; padding: 6px 10px;" readonly>
+                <button type="button" onclick="subirDiretorio()" style="padding: 6px 12px; background: #444; color: #fff; font-weight: bold; border: 1px solid #555;">⬆ Subir</button>
+            </div>
+            <div id="fsExplorerList" style="max-height: 300px; overflow-y: auto; border: 1px solid #444; background: #1a1a1a; border-radius: 4px; padding: 4px;">
+                <!-- Lista de pastas e arquivos -->
+            </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" onclick="fecharFsModal()" style="background: #555; padding: 8px 16px; border-radius: 4px; color: #fff;">Cancelar</button>
+            <button type="button" id="btnFsConfirmar" style="background: #00BCD4; color: #fff; padding: 8px 16px; border-radius: 4px; display: none;">Confirmar</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

@@ -16,8 +16,24 @@ app.use(cors());
 // Permite que a API receba blocos de texto grandes (o código fonte)
 app.use(express.json({ limit: '10mb' })); 
 
+// Servir arquivos estáticos do diretório atual (Tools) para evitar restrições de segurança do protocolo file://
+app.use(express.static(__dirname));
+
 const logPath = path.join(process.env.LOCALAPPDATA, 'Ollama', 'server.log');
 const TEMPLATES_DIR = 'C:\\Projetos Antigravity\\Gerador de Programas Lazarus\\templates';
+
+function autoCorrectPath(originalPath) {
+    if (!originalPath) return originalPath;
+    let cleaned = originalPath.trim();
+    if (fs.existsSync(cleaned)) return cleaned;
+    
+    // Tenta corrigir espaço duplo em "Connect Web Editor"
+    const corrected = cleaned.replace(/Connect Web Editor/g, 'Connect Web  Editor');
+    if (fs.existsSync(corrected)) {
+        return corrected;
+    }
+    return cleaned;
+}
 
 // ==========================================
 // FUNÇÕES UTILITÁRIAS DE PARSING & MAPS (uTypes.pas)
@@ -153,13 +169,44 @@ app.get('/api/logs', (req, res) => {
     }
 });
 
+let isGpuAvailable = true;
+let nvidiaSmiPath = null;
+
+function locateNvidiaSmi() {
+    if (nvidiaSmiPath) return nvidiaSmiPath;
+
+    const candidates = [
+        'C:\\Windows\\System32\\nvidia-smi.exe',
+        'C:\\Windows\\sysnative\\nvidia-smi.exe',
+        'C:\\Program Files\\NVIDIA Corporation\\NVSMI\\nvidia-smi.exe'
+    ];
+
+    for (const cand of candidates) {
+        try {
+            if (fs.existsSync(cand)) {
+                nvidiaSmiPath = cand;
+                return nvidiaSmiPath;
+            }
+        } catch (e) {}
+    }
+
+    nvidiaSmiPath = 'nvidia-smi'; // fallback para o PATH global
+    return nvidiaSmiPath;
+}
+
 // ==========================================
 // ROTA 2: Esforço da GPU (NVIDIA)
 // ==========================================
 app.get('/api/gpu', (req, res) => {
-    exec('nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits', (error, stdout) => {
+    if (!isGpuAvailable) {
+        return res.json({ usage: 0, error: "NVIDIA GPU não disponível" });
+    }
+
+    const commandPath = locateNvidiaSmi();
+    exec(`"${commandPath}" --query-gpu=utilization.gpu --format=csv,noheader,nounits`, { windowsHide: true }, (error, stdout) => {
         if (error) {
-            return res.status(500).json({ usage: 0, error: "Falha ao ler NVIDIA" });
+            isGpuAvailable = false; // Desativa chamadas futuras para evitar spawn de CMD
+            return res.json({ usage: 0, error: "NVIDIA GPU não disponível" });
         }
         const usage = parseInt(stdout.trim(), 10);
         res.json({ usage: isNaN(usage) ? 0 : usage });
@@ -170,10 +217,11 @@ app.get('/api/gpu', (req, res) => {
 // ROTA 3: Compilador Lazarus (Suporta LPI externo e local)
 // ==========================================
 app.post('/api/compile', (req, res) => {
-    const { codigo_fonte, lpi_path } = req.body;
+    let { codigo_fonte, lpi_path } = req.body;
 
     // Se o cliente enviar um caminho de arquivo .lpi absoluto direto
     if (lpi_path) {
+        lpi_path = autoCorrectPath(lpi_path);
         if (!fs.existsSync(lpi_path)) {
             return res.status(404).json({ sucesso: false, mensagem: "Arquivo .lpi não encontrado em: " + lpi_path });
         }
@@ -324,7 +372,18 @@ app.get('/api/templates', (req, res) => {
 // ROTA 5: Ler Metadados do Banco Firebird 5
 // ==========================================
 app.post('/api/database/schema', (req, res) => {
-    const { host, port, database, user, password } = req.body;
+    let { host, port, database, user, password } = req.body;
+    host = host ? host.toString().trim() : '127.0.0.1';
+    port = port ? port.toString().trim() : '3050';
+    user = user ? user.trim() : 'SYSDBA';
+    password = password ? password.trim() : 'masterkey';
+    database = autoCorrectPath(database);
+    
+    console.log("🔍 [Diagnostic] Database Path length:", database.length);
+    for (let i = 0; i < database.length; i++) {
+        console.log(`  char[${i}]: ${database.charCodeAt(i)} (${database[i]})`);
+    }
+
     if (!database) {
         return res.status(400).json({ sucesso: false, erro: "Caminho do banco de dados (.fdb) é obrigatório." });
     }
@@ -339,8 +398,12 @@ app.post('/api/database/schema', (req, res) => {
         charset: 'UTF8'
     };
 
+    console.log("🔌 [Firebird Attach] Opções enviadas:", { ...options, password: '***' });
+
     Firebird.attach(options, (err, db) => {
         if (err) {
+            console.error("❌ [Firebird Attach Error Details]:", err);
+            if (res.headersSent) return;
             return res.status(500).json({ sucesso: false, erro: "Falha ao conectar no Firebird: " + err.message });
         }
 
@@ -349,7 +412,7 @@ app.post('/api/database/schema', (req, res) => {
             SELECT TRIM(RDB$RELATION_NAME) AS TABLE_NAME 
             FROM RDB$RELATIONS 
             WHERE coalesce(RDB$SYSTEM_FLAG, 0) = 0 
-              AND coalesce(RDB$VIEW_FLAG, 0) = 0
+              AND RDB$VIEW_SOURCE IS NULL
             ORDER BY RDB$RELATION_NAME
         `;
 
@@ -364,7 +427,8 @@ app.post('/api/database/schema', (req, res) => {
               COALESCE(F.RDB$FIELD_PRECISION, 0) AS FIELD_PRECISION, 
               COALESCE(F.RDB$FIELD_SCALE, 0) AS FIELD_SCALE, 
               COALESCE(F.RDB$FIELD_SUB_TYPE, 0) AS FIELD_SUB_TYPE, 
-              RF.RDB$FIELD_POSITION AS FIELD_POSITION 
+              RF.RDB$FIELD_POSITION AS FIELD_POSITION,
+              TRIM(RF.RDB$GENERATOR_NAME) AS GENERATOR_NAME
             FROM RDB$RELATION_FIELDS RF 
             JOIN RDB$FIELDS F ON F.RDB$FIELD_NAME = RF.RDB$FIELD_SOURCE 
             ORDER BY RF.RDB$RELATION_NAME, RF.RDB$FIELD_POSITION
@@ -401,24 +465,28 @@ app.post('/api/database/schema', (req, res) => {
         db.query(sqlListarTabelas, (errTables, tablesRows) => {
             if (errTables) {
                 db.detach();
+                if (res.headersSent) return;
                 return res.status(500).json({ sucesso: false, erro: "Erro ao listar tabelas: " + errTables.message });
             }
 
             db.query(sqlCampos, (errFields, fieldsRows) => {
                 if (errFields) {
                     db.detach();
+                    if (res.headersSent) return;
                     return res.status(500).json({ sucesso: false, erro: "Erro ao ler campos: " + errFields.message });
                 }
 
                 db.query(sqlPKs, (errPKs, pksRows) => {
                     if (errPKs) {
                         db.detach();
+                        if (res.headersSent) return;
                         return res.status(500).json({ sucesso: false, erro: "Erro ao ler PKs: " + errPKs.message });
                     }
 
                     db.query(sqlFKs, (errFKs, fksRows) => {
                         db.detach();
                         if (errFKs) {
+                            if (res.headersSent) return;
                             return res.status(500).json({ sucesso: false, erro: "Erro ao ler FKs: " + errFKs.message });
                         }
 
@@ -469,6 +537,7 @@ app.post('/api/database/schema', (req, res) => {
                             }
                         });
 
+                        if (res.headersSent) return;
                         res.json({ sucesso: true, tabelas: Object.values(tablesMap) });
                     });
                 });
@@ -481,10 +550,16 @@ app.post('/api/database/schema', (req, res) => {
 // ROTA 6: Gerar Projeto Lazarus MVC (Local)
 // ==========================================
 app.post('/api/generate-project', (req, res) => {
-    const { 
+    let { 
         host, port, database, user, password,
         selectedTables, templateId, projectName, outputDir 
     } = req.body;
+    host = host ? host.toString().trim() : '127.0.0.1';
+    port = port ? port.toString().trim() : '3050';
+    user = user ? user.trim() : 'SYSDBA';
+    password = password ? password.trim() : 'masterkey';
+    database = autoCorrectPath(database);
+    outputDir = autoCorrectPath(outputDir);
 
     if (!selectedTables || selectedTables.length === 0) {
         return res.status(400).json({ sucesso: false, erro: "Selecione ao menos uma tabela." });
@@ -539,7 +614,8 @@ app.post('/api/generate-project', (req, res) => {
               COALESCE(F.RDB$FIELD_PRECISION, 0) AS FIELD_PRECISION, 
               COALESCE(F.RDB$FIELD_SCALE, 0) AS FIELD_SCALE, 
               COALESCE(F.RDB$FIELD_SUB_TYPE, 0) AS FIELD_SUB_TYPE, 
-              RF.RDB$FIELD_POSITION AS FIELD_POSITION 
+              RF.RDB$FIELD_POSITION AS FIELD_POSITION,
+              TRIM(RF.RDB$GENERATOR_NAME) AS GENERATOR_NAME
             FROM RDB$RELATION_FIELDS RF 
             JOIN RDB$FIELDS F ON F.RDB$FIELD_NAME = RF.RDB$FIELD_SOURCE 
             WHERE TRIM(RF.RDB$RELATION_NAME) IN (${selectedTables.map(t => `'${t}'`).join(',')})
@@ -581,17 +657,44 @@ app.post('/api/generate-project', (req, res) => {
                 if (errPKs) { db.detach(); return res.status(500).json({ sucesso: false, erro: errPKs.message }); }
 
                 db.query(sqlFKs, (errFKs, fksRows) => {
-                    db.detach();
-                    if (errFKs) return res.status(500).json({ sucesso: false, erro: errFKs.message });
+                    if (errFKs) { db.detach(); return res.status(500).json({ sucesso: false, erro: errFKs.message }); }
+                    
+                    db.query("SELECT TRIM(RDB$GENERATOR_NAME) AS GEN_NAME FROM RDB$GENERATORS WHERE RDB$SYSTEM_FLAG = 0", (errGens, gensRows) => {
+                        db.detach();
+                        if (errGens) return res.status(500).json({ sucesso: false, erro: errGens.message });
+                        
+                        const gensList = (gensRows || []).map(r => r.gen_name || r.GEN_NAME).filter(Boolean);
 
-                    // Agrupar metadados
-                    const tables = selectedTables.map(tableName => {
-                        const tbl = {
+                        // Agrupar metadados
+                        const tables = selectedTables.map(tableName => {
+                            const fieldsForTable = fieldsRows.filter(f => f.table_name === tableName);
+                            const pkField = fieldsForTable.find(f => pksRows.some(pk => pk.table_name === tableName && pk.field_name === f.field_name));
+                            let generatorName = '';
+                            if (pkField && pkField.generator_name) {
+                                generatorName = pkField.generator_name;
+                            } else {
+                                const possibleNames = [
+                                    `GEN_${tableName}_ID`,
+                                    `GEN_${tableName}`,
+                                    `${tableName}_SEQ`
+                                ];
+                                const foundGen = gensList.find(g => g && possibleNames.some(p => p.toUpperCase() === g.toUpperCase()));
+                                if (foundGen) {
+                                    generatorName = foundGen;
+                                } else {
+                                    const foundContains = gensList.find(g => g && g.toUpperCase().includes(tableName.toUpperCase()));
+                                    generatorName = foundContains || `GEN_${tableName}`;
+                                }
+                            }
+                            console.log(`Table: ${tableName}, PK: ${pkField ? pkField.field_name : 'none'}, GenName: ${generatorName}`);
+
+                            const tbl = {
                             nome: tableName,
                             nomePascal: toPascalCase(tableName),
                             nomeLower: tableName.toLowerCase(),
                             campos: [],
-                            pk: null
+                            pk: null,
+                            generatorName: generatorName
                         };
 
                         const fields = fieldsRows.filter(f => f.table_name === tableName);
@@ -709,6 +812,31 @@ app.post('/api/generate-project', (req, res) => {
                         const lpiName = `${projectName}.lpi`;
                         salvarArquivo(lpiName, lpiContent);
 
+                        // 6b. Gerar o arquivo Lazarus Project Session .lps para abrir uViewMain por padrão
+                        const lpsContent = `<?xml version="1.0" encoding="UTF-8"?>\r\n` +
+                                           `<CONFIG>\r\n` +
+                                           `  <ProjectSession>\r\n` +
+                                           `    <PathDelim Value="\\\\"/>\r\n` +
+                                           `    <Version Value="12"/>\r\n` +
+                                           `    <Units>\r\n` +
+                                           `      <Unit>\r\n` +
+                                           `        <Filename Value="${projectName}.lpr"/>\r\n` +
+                                           `        <IsPartOfProject Value="True"/>\r\n` +
+                                           `        <UsageCount Value="20"/>\r\n` +
+                                           `      </Unit>\r\n` +
+                                           `      <Unit>\r\n` +
+                                           `        <Filename Value="view\\\\uViewMain.pas"/>\r\n` +
+                                           `        <IsPartOfProject Value="True"/>\r\n` +
+                                           `        <IsVisibleTab Value="True"/>\r\n` +
+                                           `        <Loaded Value="True"/>\r\n` +
+                                           `        <LoadedDesigner Value="True"/>\r\n` +
+                                           `        <UsageCount Value="20"/>\r\n` +
+                                           `      </Unit>\r\n` +
+                                           `    </Units>\r\n` +
+                                           `  </ProjectSession>\r\n` +
+                                           `</CONFIG>`;
+                        salvarArquivo(`${projectName}.lps`, lpsContent);
+
                         res.json({
                             sucesso: true,
                             mensagem: `Projeto ${projectName} gerado com sucesso em: ${projectDir}`,
@@ -720,6 +848,7 @@ app.post('/api/generate-project', (req, res) => {
                     } catch (errGen) {
                         res.status(500).json({ sucesso: false, erro: "Falha durante a geração física dos arquivos: " + errGen.message });
                     }
+                    });
                 });
             });
         });
@@ -874,6 +1003,7 @@ function processarMarcadoresGlobais(tplText, tabela, projectName) {
     result = result.replace(/\{\{PK_CAMPO\}\}/g, pkNome);
     result = result.replace(/\{\{PK_CAMPO_PASCAL\}\}/g, pkNomePascal);
     result = result.replace(/\{\{PK_TIPO_PASCAL\}\}/g, pkTipo);
+    result = result.replace(/\{\{GENERATOR_NAME\}\}/g, tabela.generatorName || `GEN_${tabela.nome}`);
     result = result.replace(/\{\{DATA_GERACAO\}\}/g, dateStr);
     result = result.replace(/\{\{TOTAL_CAMPOS\}\}/g, tabela.campos.length.toString());
 
@@ -990,10 +1120,26 @@ function postProcessViewMain(viewMainContent, selectedTables, projectName) {
 }
 
 function gerarProjetoLPI(projectName, filesList, foldersList) {
+    const uniqueFiles = Array.from(new Set(filesList));
+
+    const sortedFiles = [...uniqueFiles].sort((a, b) => {
+        const aIsMain = a.toLowerCase() === `${projectName.toLowerCase()}.lpr`;
+        const bIsMain = b.toLowerCase() === `${projectName.toLowerCase()}.lpr`;
+        if (aIsMain && !bIsMain) return -1;
+        if (!aIsMain && bIsMain) return 1;
+
+        const aIsLpr = a.toLowerCase().endsWith('.lpr');
+        const bIsLpr = b.toLowerCase().endsWith('.lpr');
+        if (aIsLpr && !bIsLpr) return -1;
+        if (!aIsLpr && bIsLpr) return 1;
+
+        return a.localeCompare(b);
+    });
+
     let unitsXML = '';
     let idxUnit = 0;
     
-    filesList.forEach(file => {
+    sortedFiles.forEach(file => {
         const normalizedFile = file.replace(/\//g, '\\');
         unitsXML += `      <Unit${idxUnit}>\r\n` +
                     `        <Filename Value="${normalizedFile}"/>\r\n` +
@@ -1018,6 +1164,7 @@ function gerarProjetoLPI(projectName, filesList, foldersList) {
       <XPManifest>
         <DpiAware Value="True"/>
       </XPManifest>
+      <MainUnit Value="0"/>
     </General>
     <BuildModes Count="1">
       <Item1 Name="Default" Default="True"/>
@@ -1029,13 +1176,16 @@ function gerarProjetoLPI(projectName, filesList, foldersList) {
     <RunParams>
       <FormatVersion Value="2"/>
     </RunParams>
-    <RequiredPackages Count="2">
+    <RequiredPackages Count="3">
       <Item1>
         <PackageName Value="ibexpress"/>
       </Item1>
       <Item2>
         <PackageName Value="LCL"/>
       </Item2>
+      <Item3>
+        <PackageName Value="DateTimeCtrls"/>
+      </Item3>
     </RequiredPackages>
     <Units Count="${idxUnit}">
 ${unitsXML}    </Units>
@@ -1081,9 +1231,94 @@ ${unitsXML}    </Units>
 }
 
 // ==========================================
+// ROTA DO FILESYSTEM EXPLORER
+// ==========================================
+app.post('/api/fs/list', (req, res) => {
+    let currentPath = req.body.path || 'C:\\Projetos Antigravity';
+    currentPath = autoCorrectPath(currentPath);
+    
+    // Normaliza o caminho
+    currentPath = path.resolve(currentPath);
+    
+    try {
+        if (!fs.existsSync(currentPath)) {
+            return res.json({ sucesso: false, erro: 'Caminho não existe' });
+        }
+        
+        const stats = fs.statSync(currentPath);
+        if (!stats.isDirectory()) {
+            return res.json({ sucesso: false, erro: 'Não é um diretório' });
+        }
+        
+        const items = fs.readdirSync(currentPath);
+        const dirs = [];
+        const files = [];
+        
+        const parentPath = path.dirname(currentPath);
+        
+        items.forEach(item => {
+            try {
+                const fullItemPath = path.join(currentPath, item);
+                const itemStats = fs.statSync(fullItemPath);
+                if (itemStats.isDirectory()) {
+                    dirs.push({ name: item, path: fullItemPath });
+                } else {
+                    files.push({ name: item, path: fullItemPath, size: itemStats.size });
+                }
+            } catch (e) {
+                // Ignora sem erro de permissão
+            }
+        });
+        
+        dirs.sort((a, b) => a.name.localeCompare(b.name));
+        files.sort((a, b) => a.name.localeCompare(b.name));
+        
+        res.json({
+            sucesso: true,
+            currentPath,
+            parentPath: parentPath !== currentPath ? parentPath : null,
+            dirs,
+            files
+        });
+    } catch (error) {
+        res.json({ sucesso: false, erro: error.message });
+    }
+});
+
+// ==========================================
+// ROTA 7: Abrir Caixa de Diálogo de Arquivo (.fdb)
+// ==========================================
+app.get('/api/dialog/file', (req, res) => {
+    const scriptPath = path.join(__dirname, 'open_file_dialog.ps1');
+    const command = `powershell -NoProfile -ExecutionPolicy Bypass -STA -File "${scriptPath}"`;
+    
+    exec(command, (error, stdout) => {
+        if (error) {
+            return res.json({ sucesso: false, erro: error.message });
+        }
+        res.json({ sucesso: true, path: stdout.trim() });
+    });
+});
+
+// ==========================================
+// ROTA 8: Abrir Caixa de Diálogo de Pasta (Diretório)
+// ==========================================
+app.get('/api/dialog/folder', (req, res) => {
+    const scriptPath = path.join(__dirname, 'open_folder_dialog.ps1');
+    const command = `powershell -NoProfile -ExecutionPolicy Bypass -STA -File "${scriptPath}"`;
+    
+    exec(command, (error, stdout) => {
+        if (error) {
+            return res.json({ sucesso: false, erro: error.message });
+        }
+        res.json({ sucesso: true, path: stdout.trim() });
+    });
+});
+
+// ==========================================
 // INICIALIZAÇÃO
 // ==========================================
 app.listen(3002, () => {
     console.log('📡 API Completa rodando em http://localhost:3002');
-    console.log('Rotas ativas: /api/logs | /api/gpu | /api/compile | /api/templates | /api/database/schema | /api/generate-project');
+    console.log('Rotas ativas: /api/logs | /api/gpu | /api/compile | /api/templates | /api/database/schema | /api/generate-project | /api/dialog/file | /api/dialog/folder');
 });
