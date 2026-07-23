@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -19,8 +20,12 @@ app.use(express.json({ limit: '10mb' }));
 // Servir arquivos estáticos do diretório atual (Tools) para evitar restrições de segurança do protocolo file://
 app.use(express.static(__dirname));
 
-const logPath = path.join(process.env.LOCALAPPDATA, 'Ollama', 'server.log');
-const TEMPLATES_DIR = 'C:\\Projetos Antigravity\\Gerador de Programas Lazarus\\templates';
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
+const logPath = process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Ollama', 'server.log') : path.join(__dirname, 'server.log');
+const TEMPLATES_DIR = path.join(__dirname, 'templates');
 
 function autoCorrectPath(originalPath) {
     if (!originalPath) return originalPath;
@@ -566,6 +571,16 @@ app.post('/api/generate-project', (req, res) => {
     }
     if (!projectName) {
         return res.status(400).json({ sucesso: false, erro: "O nome do projeto é obrigatório." });
+    }
+    // Sanotizar o nome do projeto para ser um identificador Pascal válido (sem espaços, caracteres especiais ou iniciando com número)
+    projectName = projectName.trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_]/g, '');
+    if (!projectName) {
+        return res.status(400).json({ sucesso: false, erro: "Nome de projeto inválido. Use apenas letras, números e sublinhados (_)." });
+    }
+    if (/^[0-9]/.test(projectName)) {
+        projectName = 'P_' + projectName;
     }
     if (!outputDir) {
         return res.status(400).json({ sucesso: false, erro: "O diretório de saída é obrigatório." });
@@ -1316,9 +1331,7 @@ app.get('/api/dialog/folder', (req, res) => {
 });
 
 // ==========================================
-// INICIALIZAÇÃO
+// INICIALIZAÇÃO SAAS
 // ==========================================
-app.listen(3002, () => {
-    console.log('📡 API Completa rodando em http://localhost:3002');
-    console.log('Rotas ativas: /api/logs | /api/gpu | /api/compile | /api/templates | /api/database/schema | /api/generate-project | /api/dialog/file | /api/dialog/folder');
-});
+import { startSaaSBackend } from './saas-backend.js';
+startSaaSBackend(app);

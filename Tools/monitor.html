@@ -138,6 +138,15 @@
 <div class="container">
     <h2>⚡ Dashboard Ollama & Gerador Lazarus MVC</h2>
     
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #252525; padding: 12px 20px; border-radius: 8px; border: 1px solid #333;">
+        <span style="font-weight: 600; color: #a5b4fc;">Sessão Ativa: <span id="lblUserEmail"></span></span>
+        <div style="display: flex; gap: 10px;">
+            <a href="manual.html" style="text-decoration:none; display:inline-flex; align-items:center; background:#2c2c2c; padding:8px 16px; border-radius:6px; font-size:13px; color:#fff; font-weight:600;">Manual do Usuário</a>
+            <a id="lnkAdmin" href="admin.html" style="text-decoration:none; display:none; align-items:center; background:#4f46e5; padding:8px 16px; border-radius:6px; font-size:13px; color:#fff; font-weight:600;">Painel Admin</a>
+            <button id="btnExit" style="background:#dc2626; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">Sair</button>
+        </div>
+    </div>
+    
     <div class="status-panel">
         <div class="status-box">
             <div class="status-title">Status da API</div>
@@ -292,6 +301,41 @@
 </div>
 
 <script>
+    // ====== CONTROLE DE ACESSO SAAS ======
+    const saasToken = localStorage.getItem('saas_token');
+    const saasUser = JSON.parse(localStorage.getItem('saas_user') || '{}');
+
+    if (!saasToken) {
+        window.location.href = 'login.html';
+    }
+
+    async function checkAcessoSaaS() {
+        try {
+            const res = await fetch('/api/saas/payments/check-access', {
+                headers: { 'Authorization': 'Bearer ' + saasToken }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.hasAccess) {
+                window.location.href = 'payment.html';
+            }
+        } catch (err) {
+            window.location.href = 'payment.html';
+        }
+    }
+    checkAcessoSaaS();
+
+    // Bindings UI
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('lblUserEmail').textContent = saasUser.email || '';
+        if (saasUser.isAdmin === 1) {
+            document.getElementById('lnkAdmin').style.display = 'inline-flex';
+        }
+        document.getElementById('btnExit').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        });
+    });
+
     let currentMode = 'gpu'; 
     const historyLimit = 25;
     const history = { labels: [], gpu_usage: [], vram: [], ram: [] };

@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Gerador Lazarus SaaS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #070913 0%, #0c0f24 50%, #050711 100%);
+            --panel-bg: #0d1326;
+            --border-color: rgba(99, 102, 241, 0.15);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(13, 18, 38, 0.6);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 800;
+            color: #a5b4fc;
+        }
+
+        .header-logo span {
+            background: rgba(99, 102, 241, 0.15);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--primary);
+        }
+
+        .user-nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logout-btn {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            padding: 32px;
+            gap: 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Sidebar Navegação */
+        .sidebar {
+            width: 250px;
+            background: rgba(13, 18, 38, 0.35);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            height: fit-content;
+        }
+
+        .nav-btn {
+            width: 100%;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: rgba(99, 102, 241, 0.12);
+            color: #a5b4fc;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* KPIs */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .kpi-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .kpi-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .kpi-label {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* Tabelas */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #a5b4fc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        td {
+            padding: 14px 16px;
+            color: #94a3b8;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .status-chip {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-pendente { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        .status-aprovado { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .status-rejeitado { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+
+        .action-btn {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Formulários */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #818cf8;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.2);
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        .save-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        /* MODAL COM ZOOM */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-card {
+            background: #0d1326;
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .zoom-toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 16px;
+        }
+
+        .zoom-btn {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .image-viewport {
+            flex: 1;
+            overflow: auto;
+            max-height: 50vh;
+            background: #050811;
+            border-radius: 10px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .comprovante-img {
+            max-width: 100%;
+            border-radius: 6px;
+            transition: transform 0.15s ease-out;
+            transform-origin: top center;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 16px;
+            margin-top: 16px;
+        }
+
+        .approve-btn {
+            background: #10b981;
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        .approve-btn:hover {
+            background: #059669;
+        }
+
+        .reject-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .reject-btn:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        .info-alert {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-logo">
+            ⚡ Gerador Lazarus <span>Painel Admin</span>
+        </div>
+        <div class="user-nav">
+            <span id="adminEmail" style="font-size: 14px; font-weight: 600; color: #a5b4fc;"></span>
+            <button id="logoutBtn" class="logout-btn">Sair</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <button class="nav-btn active" data-target="financial">💰 Finanças & Pix</button>
+            <button class="nav-btn" data-target="users">👥 Usuários</button>
+            <button class="nav-btn" data-target="settings">⚙️ Configurações</button>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <span class="kpi-label">Faturamento Total</span>
+                    <span id="kpiRevenue" class="kpi-value">R$ 0,00</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Comprovantes Pendentes</span>
+                    <span id="kpiPending" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Total Aprovados</span>
+                    <span id="kpiApproved" class="kpi-value">0</span>
+                </div>
+            </div>
+
+            <div id="infoAlert" class="info-alert"></div>
+
+            <!-- Tab 1: Finanças & Comprovantes -->
+            <div id="tab-financial" class="tab-content panel">
+                <h3 class="panel-title">Auditoria de Comprovantes Pix</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>E-mail</th>
+                                <th>Valor</th>
+                                <th>Data Envio</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTable">
+                            <!-- Inserido dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Usuários -->
+            <div id="tab-users" class="tab-content panel" style="display: none;">
+                <h3 class="panel-title">Controle de Usuários</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Tipo</th>
+                                <th>Criado Em</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <!-- Inserido dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 3: Configurações / Parametrização -->
+            <div id="tab-settings" class="tab-content panel" style="display: none;">
+                <h3 class="panel-title">Parametrização da Diária & Pix</h3>
+                <form id="settingsForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="valorDiaria">Valor da Diária (R$)</label>
+                            <input type="number" step="0.01" id="valorDiaria" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pixChave">Chave Pix</label>
+                            <input type="text" id="pixChave" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pixNome">Nome do Recebedor</label>
+                            <input type="text" id="pixNome" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pixCidade">Cidade do Recebedor</label>
+                            <input type="text" id="pixCidade" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="save-btn">Salvar Configurações</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO COM ZOOM -->
+    <div id="modalOverlay" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <span id="modalUserTitle" class="modal-title">Comprovante de Pagamento</span>
+                <button id="closeModalBtn" class="close-btn">&times;</button>
+            </div>
+            
+            <div class="zoom-toolbar">
+                <button id="zoomInBtn" class="zoom-btn">🔍 Aproximar (+)</button>
+                <span id="zoomPercent" style="font-size: 13px; font-weight: 700; color: #a5b4fc; min-width: 50px; text-align: center;">100%</span>
+                <button id="zoomOutBtn" class="zoom-btn">🔍 Afastar (-)</button>
+                <button id="zoomResetBtn" class="zoom-btn">🔄 Reset</button>
+            </div>
+
+            <div class="image-viewport">
+                <img id="comprovanteImg" class="comprovante-img" src="" alt="Comprovante">
+            </div>
+
+            <div class="modal-footer">
+                <button id="modalRejectBtn" class="save-btn reject-btn">Rejeitar Pagamento</button>
+                <button id="modalApproveBtn" class="save-btn approve-btn">Aprovar Pix & Liberar Acesso</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('saas_token');
+        const user = JSON.parse(localStorage.getItem('saas_user') || '{}');
+
+        // Proteção de rota
+        if (!token || user.isAdmin !== 1) {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('adminEmail').textContent = user.email;
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        });
+
+        // Alternância de abas
+        const tabs = document.querySelectorAll('.nav-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                const target = tab.getAttribute('data-target');
+                tabContents.forEach(c => c.style.display = 'none');
+                document.getElementById(`tab-${target}`).style.display = 'block';
+
+                if (target === 'users') fetchUsers();
+                if (target === 'financial') fetchPayments();
+                if (target === 'settings') fetchSettings();
+            });
+        });
+
+        // Alerta de feedback
+        const infoAlert = document.getElementById('infoAlert');
+        function showAlert(msg) {
+            infoAlert.textContent = msg;
+            infoAlert.style.display = 'block';
+            setTimeout(() => { infoAlert.style.display = 'none'; }, 5000);
+        }
+
+        // 1. Buscar KPIs
+        async function fetchKPIs() {
+            try {
+                const res = await fetch('/api/saas/admin/financial-summary', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('kpiRevenue').textContent = 'R$ ' + parseFloat(data.summary.totalFaturado).toFixed(2).replace('.', ',');
+                    document.getElementById('kpiPending').textContent = data.summary.qtdPendente;
+                    document.getElementById('kpiApproved').textContent = data.summary.qtdAprovado;
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // 2. Tab Finanças: Listar Pagamentos
+        async function fetchPayments() {
+            try {
+                const res = await fetch('/api/saas/admin/payments', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const tbody = document.getElementById('paymentsTable');
+                    tbody.innerHTML = '';
+
+                    data.payments.forEach(p => {
+                        const tr = document.createElement('tr');
+                        const dataEnvio = new Date(p.pag_criado).toLocaleString('pt-BR');
+                        tr.innerHTML = `
+                            <td>${p.pag_id}</td>
+                            <td>${p.usu_nome}</td>
+                            <td>${p.usu_email}</td>
+                            <td>R$ ${parseFloat(p.pag_valor).toFixed(2).replace('.', ',')}</td>
+                            <td>${dataEnvio}</td>
+                            <td><span class="status-chip status-${p.pag_status}">${p.pag_status}</span></td>
+                            <td>
+                                ${p.pag_status === 'pendente' 
+                                    ? `<button class="action-btn" onclick="openProofModal(${p.pag_id}, '${p.usu_nome}', '/uploads/comprovantes/${p.pag_comprovante}')">Ver Comprovante</button>`
+                                    : `<a href="/uploads/comprovantes/${p.pag_comprovante}" target="_blank" class="action-btn" style="text-decoration:none;">Visualizar</a>`
+                                }
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // 3. Tab Usuários: Listar e Bloquear
+        async function fetchUsers() {
+            try {
+                const res = await fetch('/api/saas/admin/users', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const tbody = document.getElementById('usersTable');
+                    tbody.innerHTML = '';
+
+                    data.users.forEach(u => {
+                        const tr = document.createElement('tr');
+                        const criado = new Date(u.usu_criado).toLocaleDateString('pt-BR');
+                        tr.innerHTML = `
+                            <td>${u.usu_id}</td>
+                            <td>${u.usu_nome}</td>
+                            <td>${u.usu_email}</td>
+                            <td>${u.usu_is_admin === 1 ? 'Admin' : 'Cliente'}</td>
+                            <td>${criado}</td>
+                            <td><span class="status-chip" style="background:${u.usu_status === 1 ? '#065f46' : '#991b1b'}; color:#fff;">${u.usu_status === 1 ? 'Ativo' : 'Bloqueado'}</span></td>
+                            <td>
+                                ${u.usu_id !== user.id
+                                    ? `<button class="action-btn" style="background:${u.usu_status === 1 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)'}; color:${u.usu_status === 1 ? '#fca5a5' : '#34d399'};" onclick="toggleUserStatus(${u.usu_id}, ${u.usu_status === 1 ? 0 : 1})">
+                                        ${u.usu_status === 1 ? 'Bloquear' : 'Desbloquear'}
+                                       </button>`
+                                    : '-'
+                                }
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function toggleUserStatus(userId, status) {
+            try {
+                const res = await fetch('/api/saas/admin/users/status', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token 
+                    },
+                    body: JSON.stringify({ userId, status })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(data.message);
+                    fetchUsers();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // 4. Tab Configurações: Parametrizar Pix
+        const settingsForm = document.getElementById('settingsForm');
+        async function fetchSettings() {
+            try {
+                const res = await fetch('/api/saas/admin/settings', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok && data.config) {
+                    document.getElementById('valorDiaria').value = data.config.VALOR_DIARIA || '10.00';
+                    document.getElementById('pixChave').value = data.config.PIX_CHAVE || '';
+                    document.getElementById('pixNome').value = data.config.PIX_NOME || '';
+                    document.getElementById('pixCidade').value = data.config.PIX_CIDADE || '';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const valorDiaria = document.getElementById('valorDiaria').value;
+            const pixChave = document.getElementById('pixChave').value;
+            const pixNome = document.getElementById('pixNome').value;
+            const pixCidade = document.getElementById('pixCidade').value;
+
+            try {
+                const res = await fetch('/api/saas/admin/settings', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token 
+                    },
+                    body: JSON.stringify({ valorDiaria, pixChave, pixNome, pixCidade })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(data.message);
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        // 5. MODAL DE COMPROVANTE & ZOOM
+        const modalOverlay = document.getElementById('modalOverlay');
+        const comprovanteImg = document.getElementById('comprovanteImg');
+        const modalUserTitle = document.getElementById('modalUserTitle');
+        const zoomPercent = document.getElementById('zoomPercent');
+        
+        let currentZoom = 1.0;
+        let selectedPaymentId = null;
+
+        function openProofModal(pagamentoId, nome, comprovanteUrl) {
+            selectedPaymentId = pagamentoId;
+            modalUserTitle.textContent = `Comprovante de ${nome}`;
+            comprovanteImg.src = comprovanteUrl;
+            
+            // Reset do Zoom
+            currentZoom = 1.0;
+            applyZoom();
+
+            modalOverlay.classList.add('active');
+        }
+
+        function closeProofModal() {
+            modalOverlay.classList.remove('active');
+            comprovanteImg.src = '';
+            selectedPaymentId = null;
+        }
+
+        document.getElementById('closeModalBtn').addEventListener('click', closeProofModal);
+
+        // Zoom Controles
+        function applyZoom() {
+            comprovanteImg.style.transform = `scale(${currentZoom})`;
+            zoomPercent.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            currentZoom = Math.min(currentZoom + 0.25, 3.0);
+            applyZoom();
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            currentZoom = Math.max(currentZoom - 0.25, 0.5);
+            applyZoom();
+        });
+
+        document.getElementById('zoomResetBtn').addEventListener('click', () => {
+            currentZoom = 1.0;
+            applyZoom();
+        });
+
+        // Ações de Aprovação / Rejeição no Modal
+        document.getElementById('modalApproveBtn').addEventListener('click', async () => {
+            if (!selectedPaymentId) return;
+            try {
+                const res = await fetch(`/api/saas/admin/approve/${selectedPaymentId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(data.message);
+                    closeProofModal();
+                    fetchPayments();
+                    fetchKPIs();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        document.getElementById('modalRejectBtn').addEventListener('click', async () => {
+            if (!selectedPaymentId) return;
+            if (!confirm('Deseja realmente rejeitar este comprovante PIX?')) return;
+            try {
+                const res = await fetch(`/api/saas/admin/reject/${selectedPaymentId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert(data.message);
+                    closeProofModal();
+                    fetchPayments();
+                    fetchKPIs();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        // Inicializar
+        fetchKPIs();
+        fetchPayments();
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{
+  "nome": "ERP Cyber Dark",
+  "descricao": "Sistema ERP com visual Modern Tech Dark — Grafite Carbono (#121212 / #18181B), Ciano Neon (#06B6D4) e texto de alto contraste. CRUDs em TFrames, Dashboard KPI e módulo PDV com PIX. Lazarus 4.8 + IBX.",
+  "versao": "1.2",
+  "autor": "Gerador de Sistemas Lazarus",
+  "pastas": [
+    "model",
+    "dao",
+    "controller",
+    "interface",
+    "view",
+    "view/frames",
+    "view/pdv",
+    "view/pdv/pix",
+    "dm",
+    "utils"
+  ],
+  "globais": [
+    {"tpl": "theme.tpl",                   "saida": "utils/uTheme.pas"},
+    {"tpl": "dao_base.tpl",                "saida": "dao/uDAOBase.pas"},
+    {"tpl": "dm_conexao.tpl",              "saida": "dm/uDMConexao.pas"},
+    {"tpl": "dm_conexao_lfm.tpl",          "saida": "dm/uDMConexao.lfm"},
+    {"tpl": "utils.tpl",                   "saida": "utils/uUtils.pas"},
+    {"tpl": "types.tpl",                   "saida": "utils/uTypes.pas"},
+    {"tpl": "pix_utils.tpl",              "saida": "utils/uPixUtils.pas"},
+    {"tpl": "fr_sidebar.tpl",              "saida": "view/frames/uFrSidebar.pas"},
+    {"tpl": "fr_sidebar_lfm.tpl",          "saida": "view/frames/uFrSidebar.lfm"},
+    {"tpl": "fr_dashcard.tpl",             "saida": "view/frames/uFrDashCard.pas"},
+    {"tpl": "fr_dashcard_lfm.tpl",         "saida": "view/frames/uFrDashCard.lfm"},
+    {"tpl": "view_main.tpl",               "saida": "view/uViewMain.pas"},
+    {"tpl": "view_main_lfm.tpl",           "saida": "view/uViewMain.lfm"},
+    {"tpl": "view_dashboard.tpl",          "saida": "view/uViewDashboard.pas"},
+    {"tpl": "view_dashboard_lfm.tpl",      "saida": "view/uViewDashboard.lfm"},
+    {"tpl": "view_pdv.tpl",                "saida": "view/pdv/uViewPDV.pas"},
+    {"tpl": "view_pdv_lfm.tpl",            "saida": "view/pdv/uViewPDV.lfm"},
+    {"tpl": "view_pix_pagamento.tpl",     "saida": "view/pdv/pix/uViewPixPagamento.pas"},
+    {"tpl": "view_pix_pagamento_lfm.tpl", "saida": "view/pdv/pix/uViewPixPagamento.lfm"},
+    {"tpl": "view_pix_config.tpl",        "saida": "view/pdv/pix/uViewPixConfig.pas"},
+    {"tpl": "view_pix_config_lfm.tpl",   "saida": "view/pdv/pix/uViewPixConfig.lfm"},
+    {"tpl": "project_pdv_lpr.tpl",        "saida": "{{NOME_SISTEMA}}_PDV.lpr"},
+    {"tpl": "project_lpr.tpl",            "saida": "{{NOME_SISTEMA}}.lpr"}
+  ],
+  "por_tabela": [
+    {"tpl": "model.tpl",          "saida": "model/uModel{{T}}.pas"},
+    {"tpl": "interfaces.tpl",     "saida": "interface/uInterfaces{{T}}.pas"},
+    {"tpl": "dao.tpl",            "saida": "dao/uDAO{{T}}.pas"},
+    {"tpl": "controller.tpl",     "saida": "controller/uController{{T}}.pas"},
+    {"tpl": "view_lista.tpl",     "saida": "view/frames/uFrLista{{T}}.pas"},
+    {"tpl": "view_lista_lfm.tpl", "saida": "view/frames/uFrLista{{T}}.lfm"},
+    {"tpl": "view_form.tpl",      "saida": "view/frames/uFrForm{{T}}.pas"},
+    {"tpl": "view_form_lfm.tpl",  "saida": "view/frames/uFrForm{{T}}.lfm"}
+  ]
+}

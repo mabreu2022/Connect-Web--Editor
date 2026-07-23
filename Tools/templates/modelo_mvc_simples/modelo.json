@@ -1,0 +1,25 @@
+{
+  "nome": "MVC Simples",
+  "descricao": "Arquitetura MVC com Grid de listagem e formulário de cadastro separados. Camadas: Model (POPO), DAO (SQL+Generator), Controller (interface), View (TStringGrid + TEdit). Ideal para sistemas simples e diretos.",
+  "versao": "1.1",
+  "autor": "Gerador de Sistemas Lazarus",
+  "pastas": ["model", "dao", "controller", "interface", "view", "dm", "utils"],
+  "globais": [
+    {"tpl": "dao_base.tpl",         "saida": "dao/uDAOBase.pas"},
+    {"tpl": "dm_conexao.tpl",       "saida": "dm/uDMConexao.pas"},
+    {"tpl": "dm_conexao_lfm.tpl",   "saida": "dm/uDMConexao.lfm"},
+    {"tpl": "utils.tpl",            "saida": "utils/uUtils.pas"},
+    {"tpl": "types.tpl",            "saida": "utils/uTypes.pas"},
+    {"tpl": "project_lpr.tpl",      "saida": "{{NOME_SISTEMA}}.lpr"}
+  ],
+  "por_tabela": [
+    {"tpl": "model.tpl",            "saida": "model/uModel{{T}}.pas"},
+    {"tpl": "interfaces.tpl",       "saida": "interface/uInterfaces{{T}}.pas"},
+    {"tpl": "dao.tpl",              "saida": "dao/uDAO{{T}}.pas"},
+    {"tpl": "controller.tpl",       "saida": "controller/uController{{T}}.pas"},
+    {"tpl": "view_lista.tpl",       "saida": "view/uView{{T}}Lista.pas"},
+    {"tpl": "view_lista_lfm.tpl",   "saida": "view/uView{{T}}Lista.lfm"},
+    {"tpl": "view_form.tpl",        "saida": "view/uView{{T}}Form.pas"},
+    {"tpl": "view_form_lfm.tpl",    "saida": "view/uView{{T}}Form.lfm"}
+  ]
+}

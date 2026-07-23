@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Pix - Gerador Lazarus SaaS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #070913 0%, #0c0f24 50%, #050711 100%);
+            --panel-bg: rgba(13, 18, 38, 0.45);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            padding: 24px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 36px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 16px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #a5b4fc;
+        }
+
+        .logout-btn {
+            background: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .price-badge {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 24px;
+        }
+
+        .pix-grid {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+
+        @media (max-width: 500px) {
+            .pix-grid {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+        }
+
+        .qr-box {
+            background: white;
+            padding: 10px;
+            border-radius: 16px;
+            width: 180px;
+            height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .qr-image {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        .payload-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .payload-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .payload-textarea {
+            width: 100%;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            color: #a5b4fc;
+            font-family: monospace;
+            padding: 10px;
+            font-size: 11px;
+            resize: none;
+            outline: none;
+        }
+
+        .copy-btn {
+            padding: 10px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            transition: border-color 0.2s;
+        }
+
+        .upload-section:hover {
+            border-color: var(--primary);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .file-label:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .file-name {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #6ee7b7;
+            font-weight: 600;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.2);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .error-box {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success-box {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 14px;
+            text-align: center;
+            line-height: 1.6;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1 class="header-title">⚡ Acesso por Diária (Pix)</h1>
+                <button id="logoutBtn" class="logout-btn">Sair da Conta</button>
+            </div>
+
+            <div id="errorBox" class="error-box"></div>
+
+            <div id="paymentArea">
+                <div class="price-badge">
+                    Valor da Diária: <span id="priceVal">R$ 10,00</span> (Acesso por 24 horas)
+                </div>
+
+                <div class="pix-grid">
+                    <div class="qr-box">
+                        <img id="qrImage" class="qr-image" src="" alt="Carregando QR Code...">
+                    </div>
+                    <div class="payload-box">
+                        <span class="payload-title">Pix Copia e Cola</span>
+                        <textarea id="payloadText" class="payload-textarea" readonly></textarea>
+                        <button id="copyBtn" class="copy-btn">Copiar Código</button>
+                    </div>
+                </div>
+
+                <form id="proofForm">
+                    <div class="upload-section">
+                        <p style="font-size: 14px; margin-bottom: 12px; color: var(--text-muted)">
+                            Após pagar o Pix, envie o comprovante de pagamento abaixo:
+                        </p>
+                        <label for="comprovante" class="file-label">Selecionar Arquivo</label>
+                        <input type="file" id="comprovante" class="file-input" accept="image/*,application/pdf" required>
+                        <div id="fileName" class="file-name"></div>
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="submit-btn" disabled>Enviar Comprovante</button>
+                </form>
+            </div>
+
+            <div id="successArea" class="success-box">
+                <div style="font-size: 40px; margin-bottom: 12px">⏳</div>
+                <h3>Comprovante Enviado com Sucesso!</h3>
+                <p style="margin-top: 8px">
+                    Seu comprovante Pix foi enviado para a área de auditoria financeira. O administrador irá liberar o seu acesso nas próximas horas.
+                </p>
+                <p style="margin-top: 12px; font-weight: 600; color: #a5b4fc">
+                    Você pode recarregar esta página para verificar se já foi liberado.
+                </p>
+                <button onclick="window.location.reload()" class="copy-btn" style="margin-top: 20px; width: 100%">Recarregar Página</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('saas_token');
+        if (!token) {
+            window.location.href = 'login.html';
+        }
+
+        const priceVal = document.getElementById('priceVal');
+        const qrImage = document.getElementById('qrImage');
+        const payloadText = document.getElementById('payloadText');
+        const copyBtn = document.getElementById('copyBtn');
+        const comprovanteInput = document.getElementById('comprovante');
+        const fileNameDiv = document.getElementById('fileName');
+        const submitBtn = document.getElementById('submitBtn');
+        const proofForm = document.getElementById('proofForm');
+        const errorBox = document.getElementById('errorBox');
+        const paymentArea = document.getElementById('paymentArea');
+        const successArea = document.getElementById('successArea');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        let diariaId = null;
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        });
+
+        // Copiar Pix Copia e Cola
+        copyBtn.addEventListener('click', () => {
+            payloadText.select();
+            document.execCommand('copy');
+            copyBtn.textContent = '✓ Código Copiado!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copiar Código';
+            }, 3000);
+        });
+
+        // Mostrar nome do arquivo
+        comprovanteInput.addEventListener('change', () => {
+            const file = comprovanteInput.files[0];
+            if (file) {
+                fileNameDiv.textContent = '📂 ' + file.name;
+                submitBtn.disabled = false;
+            } else {
+                fileNameDiv.textContent = '';
+                submitBtn.disabled = true;
+            }
+        });
+
+        // Buscar dados do PIX
+        async function fetchPix() {
+            try {
+                const res = await fetch('/api/saas/payments/request-diaria', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (!res.ok) {
+                    throw new Error('Falha ao requisitar diária Pix.');
+                }
+
+                const data = await res.json();
+                diariaId = data.diariaId;
+                priceVal.textContent = 'R$ ' + parseFloat(data.valor).toFixed(2).replace('.', ',');
+                qrImage.src = data.qrCodeBase64;
+                payloadText.value = data.pixCopiaCola;
+            } catch (err) {
+                errorBox.textContent = err.message;
+                errorBox.style.display = 'block';
+            }
+        }
+
+        // Enviar comprovante
+        proofForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Enviando comprovante...';
+
+            const file = comprovanteInput.files[0];
+            const formData = new FormData();
+            formData.append('comprovante', file);
+
+            try {
+                const res = await fetch('/api/saas/payments/upload-proof/' + diariaId, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || 'Erro ao enviar comprovante.');
+                }
+
+                paymentArea.style.display = 'none';
+                successArea.style.display = 'block';
+
+            } catch (err) {
+                errorBox.textContent = err.message;
+                errorBox.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Enviar Comprovante';
+            }
+        });
+
+        // Verificar status se já tiver diária ativa
+        async function checkStatus() {
+            try {
+                const accessCheck = await fetch('/api/saas/payments/check-access', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const accessData = await accessCheck.json();
+                if (accessData.hasAccess) {
+                    window.location.href = 'monitor.html';
+                } else {
+                    fetchPix();
+                }
+            } catch (e) {
+                fetchPix();
+            }
+        }
+
+        checkStatus();
+    </script>
+</body>
+</html>

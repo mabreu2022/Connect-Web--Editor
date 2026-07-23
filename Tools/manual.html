@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Usuário - Gerador Lazarus SaaS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #070913 0%, #0c0f24 50%, #050711 100%);
+            --panel-bg: rgba(13, 18, 38, 0.55);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --primary: #6366f1;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            padding: 40px 24px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 800;
+            color: #a5b4fc;
+        }
+
+        .back-btn {
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #6366f1;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        p {
+            font-size: 15px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        ol, ul {
+            margin-left: 20px;
+            margin-bottom: 20px;
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        code {
+            font-family: monospace;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #a5b4fc;
+            font-size: 14px;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: monospace;
+            color: #818cf8;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 12px 0;
+            line-height: 1.4;
+        }
+
+        .alert-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #f59e0b;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 20px 0;
+        }
+
+        .model-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .model-table th {
+            background: rgba(99, 102, 241, 0.1);
+            color: #a5b4fc;
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .model-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h1 class="title">📄 Manual do Usuário</h1>
+                <a href="monitor.html" class="back-btn">Voltar ao Gerador</a>
+            </div>
+
+            <h2>🚀 1. Configurando o Ambiente Local</h2>
+            <p>
+                Como os arquivos do projeto e a compilação final ocorrem no seu computador, é necessário ter a infraestrutura local configurada. Siga os passos:
+            </p>
+            <ol>
+                <li>Instale o <strong>Node.js</strong> (Versão 18 ou superior) no seu computador.</li>
+                <li>Baixe os arquivos da pasta <code>Tools/</code> do nosso repositório para o seu HD.</li>
+                <li>No seu computador local, abra o prompt de comando (CMD) na pasta <code>Tools/</code> e instale as dependências executando:</li>
+            </ol>
+            <div class="code-block">
+                npm install
+            </div>
+            <ol start="4">
+                <li>Configure o arquivo de agente local executando o servidor de sincronização com o comando:</li>
+            </ol>
+            <div class="code-block">
+                node server-logs.js
+            </div>
+
+            <div class="alert-box">
+                <strong>⚠️ REQUISITO LAZARUS:</strong> Certifique-se de que o Lazarus está instalado em <code>C:\lazarus\</code> e que o arquivo <code>lazbuild.exe</code> está disponível naquele caminho. Caso contrário, o gerador não conseguirá compilar os sistemas!
+            </div>
+
+            <h2>🦙 2. Configuração do Ollama (IA Local)</h2>
+            <p>
+                Para rodar o assistente de IA localmente no seu computador e evitar custos com APIs de nuvem:
+            </p>
+            <ol>
+                <li>Faça o download do <strong>Ollama</strong> através do site oficial: <a href="https://ollama.com" target="_blank" style="color: #6366f1;">ollama.com</a> e instale-o.</li>
+                <li>Após iniciar o Ollama no Windows, abra o CMD e baixe o modelo de IA recomendado com o comando:</li>
+            </ol>
+            <div class="code-block">
+                ollama run qwen2.5-coder:7b
+            </div>
+
+            <h2>💻 3. Guia de Escolha do Melhor Modelo (RAM vs VRAM)</h2>
+            <p>
+                Escolha o modelo do Ollama ideal baseado na capacidade de hardware (placa de vídeo GPU NVIDIA e memória RAM) do seu computador local:
+            </p>
+
+            <table class="model-table">
+                <thead>
+                    <tr>
+                        <th>Hardware Recomendado</th>
+                        <th>Modelo Sugerido</th>
+                        <th>Comando para Instalar</th>
+                        <th>Desempenho no Lazarus</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Até 8GB RAM / 4GB GPU</strong> (PC Básico)</td>
+                        <td><code>qwen2.5-coder:1.5b</code></td>
+                        <td><code>ollama pull qwen2.5-coder:1.5b</code></td>
+                        <td>Rápido, mas gera códigos mais simples.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>16GB RAM / 6GB-8GB GPU</strong> (Recomendado)</td>
+                        <td><code>qwen2.5-coder:7b</code></td>
+                        <td><code>ollama pull qwen2.5-coder:7b</code></td>
+                        <td><strong>Excelente!</strong> Código completo em Pascal e bom tempo de resposta.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>32GB RAM / 12GB+ GPU</strong> (Alta Performance)</td>
+                        <td><code>qwen2.5-coder:14b</code></td>
+                        <td><code>ollama pull qwen2.5-coder:14b</code></td>
+                        <td>Extremamente preciso, com excelente estruturação MVC.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>🔗 4. Rodando o Gerador</h2>
+            <p>
+                Com o <code>server-logs.js</code> e o <code>Ollama</code> rodando localmente no seu PC:
+            </p>
+            <ul>
+                <li>Faça login na plataforma SaaS.</li>
+                <li>Ative sua diária Pix de 24h.</li>
+                <li>Abra a tela do Gerador, informe os caminhos locais (banco de dados Firebird local, pasta de saída) e clique em "Gerar". A mágica acontecerá localmente!</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
