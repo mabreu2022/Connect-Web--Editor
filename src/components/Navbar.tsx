@@ -17,12 +17,12 @@ import {
   FileText,
   LogOut,
   Bot,
-  HelpCircle
+  HelpCircle,
+  ShoppingBag
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { generateFullDoc } from '../utils/codeGenerator';
-import { BotConfigModal } from './Bot/BotConfigModal';
+import { generateFullDoc, generateHTML, generateCSS } from '../utils/codeGenerator';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -36,14 +36,14 @@ export const Navbar: React.FC = () => {
     clearCanvas,
     loadTemplate,
     openHTMLFile,
-    getFullDocument,
+    activePage,
     pages,
     activePageId,
     switchPage,
     rawCss,
     rawJs,
-    isBotModalOpen,
     setIsBotModalOpen,
+    setIsStoreOpen,
     currentProjectId,
     projectsList,
     selectProject,
@@ -129,10 +129,12 @@ export const Navbar: React.FC = () => {
     if (user) {
       try {
         await saveProjectToDb();
-        alert('💾 Projeto salvo com sucesso no banco de dados!');
+        // Também salva localmente na pasta/HD
+        await handleSaveAllPages();
       } catch (err) {
         console.error('Erro ao salvar projeto:', err);
-        alert('Erro ao salvar o projeto no banco de dados.');
+        alert('Erro ao salvar o projeto no banco de dados. Tentando salvar no HD...');
+        await handleSaveAllPages();
       }
     } else {
       await handleSaveAllPages();
@@ -140,8 +142,94 @@ export const Navbar: React.FC = () => {
   };
 
   const handleLiveBrowserPreview = () => {
-    const fullDoc = getFullDocument();
-    const blob = new Blob([fullDoc], { type: 'text/html;charset=utf-8' });
+    // 1. Gera o CSS de todas as páginas combinados para evitar que elementos de outras páginas fiquem sem estilo
+    const allPagesCSS = pages.map(p => generateCSS(p.nodes)).join('\n\n');
+    const combinedCSS = `${rawCss}\n\n/* === ESTILOS DOS COMPONENTES === */\n${allPagesCSS}`;
+
+    // 2. Cria um dicionário de páginas com título e conteúdo HTML
+    const pagesDictionary = pages.reduce((acc, p) => {
+      acc[p.fileName] = {
+        title: p.seo.title || p.title,
+        body: generateHTML(p.nodes, 2)
+      };
+      return acc;
+    }, {} as Record<string, { title: string; body: string }>);
+
+    // 3. Script para interceptar cliques nos links e simular navegação SPA
+    const previewNavigationScript = `
+      window.projectPages = ${JSON.stringify(pagesDictionary)};
+      
+      window.previewNavigate = function(href) {
+        const page = window.projectPages[href];
+        if (page) {
+          document.body.innerHTML = page.body;
+          document.title = page.title;
+          
+          // Atualiza estilos do menu ativo
+          document.querySelectorAll('a, button').forEach(el => {
+            const targetHref = el.getAttribute('href') || el.getAttribute('data-href');
+            if (targetHref === href || (href === 'index.html' && targetHref === '#')) {
+              el.classList.add('active-menu-link');
+              el.style.color = '#38bdf8';
+              el.style.fontWeight = '700';
+              el.style.borderBottom = '2px solid #38bdf8';
+              el.style.paddingBottom = '4px';
+            } else {
+              el.classList.remove('active-menu-link');
+              el.style.color = '';
+              el.style.fontWeight = '';
+              el.style.borderBottom = '';
+              el.style.paddingBottom = '';
+            }
+          });
+          
+          window.scrollTo(0, 0);
+          return true;
+        }
+        return false;
+      };
+
+      document.addEventListener('click', function(e) {
+        const link = e.target.closest('a');
+        if (link) {
+          const href = link.getAttribute('href');
+          if (href && !href.startsWith('http') && !href.startsWith('//') && !href.startsWith('#')) {
+            if (window.previewNavigate(href)) {
+              e.preventDefault();
+            }
+          }
+        }
+      });
+    `;
+
+    // 4. Constrói o documento HTML inicial
+    const activePageBody = generateHTML(activePage.nodes, 2);
+    const fullHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${activePage.seo.title || activePage.title}</title>
+  <meta name="description" content="${activePage.seo.description || ''}" />
+  <meta name="keywords" content="${activePage.seo.keywords || ''}" />
+  <style>
+${combinedCSS}
+  </style>
+</head>
+<body>
+${activePageBody}
+  <script>
+    // Scripts customizados
+${rawJs}
+  </script>
+  <script>
+    // Navegação SPA de visualização
+${previewNavigationScript}
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
   };
@@ -354,6 +442,15 @@ export const Navbar: React.FC = () => {
           <div className="toolbar-divider"></div>
           <button 
             className="btn-icon" 
+            onClick={() => setIsStoreOpen(true)} 
+            title="Loja de Componentes Nativos"
+            style={{ color: '#fb7185' }}
+          >
+            <ShoppingBag size={15} />
+          </button>
+          <div className="toolbar-divider"></div>
+          <button 
+            className="btn-icon" 
             onClick={() => loadTemplate('template-login')}
             title="Carregar Template de Login"
             style={{ color: '#fbbf24' }}
@@ -400,7 +497,6 @@ export const Navbar: React.FC = () => {
         )}
       </div>
 
-      <BotConfigModal isOpen={isBotModalOpen} onClose={() => setIsBotModalOpen(false)} />
     </header>
   );
 };

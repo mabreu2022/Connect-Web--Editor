@@ -60,7 +60,7 @@ router.post('/', authenticate, async (req, res) => {
 // PUT /api/projetos/:id/paginas - Salva todas as páginas de um projeto
 router.put('/:id/paginas', authenticate, async (req, res) => {
   try {
-    const { paginas } = req.body; // array de PageItem
+    const { paginas, customCss, customJs, botConfig } = req.body;
     if (!Array.isArray(paginas)) return res.status(400).json({ error: 'Dados de páginas inválidos.' });
 
     for (const pag of paginas) {
@@ -82,7 +82,17 @@ router.put('/:id/paginas', authenticate, async (req, res) => {
       }
     }
 
-    await db.execute(`UPDATE TB_PROJETOS SET PRO_ATUALIZ=CURRENT_TIMESTAMP WHERE PRO_ID=?`, [req.params.id]);
+    const dados = JSON.stringify({
+      customCss: customCss || '',
+      customJs: customJs || '',
+      botConfig: botConfig || null
+    });
+
+    await db.execute(
+      `UPDATE TB_PROJETOS SET PRO_DADOS = ?, PRO_ATUALIZ = CURRENT_TIMESTAMP WHERE PRO_ID = ? AND PRO_USU_ID = ?`,
+      [dados, req.params.id, req.user.usu_id]
+    );
+
     res.json({ message: 'Projeto salvo com sucesso!' });
   } catch (err) {
     console.error('[SALVAR PROJETO]', err);

@@ -63,6 +63,13 @@ interface EditorContextType {
   updateBotConfig: (config: Partial<BotConfig>) => void;
   isBotModalOpen: boolean;
   setIsBotModalOpen: (open: boolean) => void;
+
+  // Component Store
+  storeComponents: any[];
+  loadStoreComponents: () => Promise<void>;
+  addStoreComponentNode: (componentId: string, parentId?: string | null) => void;
+  isStoreOpen: boolean;
+  setIsStoreOpen: (open: boolean) => void;
 }
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
@@ -202,6 +209,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   const [isBotModalOpen, setIsBotModalOpen] = useState<boolean>(false);
+  const [isStoreOpen, setIsStoreOpen] = useState<boolean>(false);
 
   const { token } = useAuth();
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(() => {
@@ -225,10 +233,59 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   // Carrega um projeto específico (com suas páginas)
   const selectProject = async (id: number) => {
+    // Auto-salva o projeto atual se houver um id e for diferente do selecionado
+    if (currentProjectId && currentProjectId !== id && token && pages && pages.length > 0) {
+      try {
+        await axios.put(`${API_URL}/projetos/${currentProjectId}/paginas`, {
+          paginas: pages,
+          customCss,
+          customJs: rawJs,
+          botConfig
+        });
+      } catch (err) {
+        console.error('Erro ao auto-salvar projeto anterior:', err);
+      }
+    }
+
     try {
       const res = await axios.get(`${API_URL}/projetos/${id}`);
       setCurrentProjectId(id);
       localStorage.setItem('cwe_current_project_id', id.toString());
+
+      // Carrega dados globais do projeto (CSS, JS, Bot)
+      let projectData: any = {};
+      try {
+        const dadosField = res.data.pro_dados || res.data.PRO_DADOS || '{}';
+        projectData = typeof dadosField === 'string' ? JSON.parse(dadosField) : dadosField;
+      } catch(e) {
+        projectData = {};
+      }
+      setCustomCss(projectData.customCss || '');
+      setRawJs(projectData.customJs || '');
+      if (projectData.botConfig) {
+        setBotConfig(projectData.botConfig);
+      } else {
+        // Fallback default se não configurado
+        setBotConfig({
+          qapPhone: '5511945457934',
+          startTime: '08:00',
+          endTime: '18:00',
+          outOfHoursMessage: '🔴 Nosso atendimento ao vivo funciona das 08:00 às 18:00. Deixe sua mensagem!',
+          faqList: [
+            {
+              id: 'faq_1',
+              keywords: ['preço', 'preco', 'valor', 'quanto custa', 'plano', 'mensalidade', 'comprar'],
+              reply: '💡 Nossos planos custam a partir de R$ 149,90/mês com 5 dias grátis.'
+            },
+            {
+              id: 'faq_2',
+              keywords: ['suporte', 'ajuda', 'atendimento', 'contato', 'falar', 'humano', 'telefone', 'email'],
+              reply: '📞 Atendimento de Segunda a Sexta das 08h às 18h.'
+            }
+          ]
+        });
+      }
+
       if (res.data.paginas && res.data.paginas.length > 0) {
         const mappedPages: PageItem[] = res.data.paginas.map((p: any) => {
           let nodes = [];
@@ -257,7 +314,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
       } else {
         setPages(initialDefaultPages);
         setActivePageId('p_index');
-        await axios.put(`${API_URL}/projetos/${id}/paginas`, { paginas: initialDefaultPages });
+        await axios.put(`${API_URL}/projetos/${id}/paginas`, {
+          paginas: initialDefaultPages,
+          customCss: '',
+          customJs: '',
+          botConfig: null
+        });
       }
     } catch (err) {
       console.error('Erro ao carregar projeto:', err);
@@ -267,13 +329,29 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
   // Salva o projeto ativo no banco de dados
   const saveProjectToDb = async () => {
     if (!currentProjectId || !token) return;
-    await axios.put(`${API_URL}/projetos/${currentProjectId}/paginas`, { paginas: pages });
+    await axios.put(`${API_URL}/projetos/${currentProjectId}/paginas`, {
+      paginas: pages,
+      customCss,
+      customJs: rawJs,
+      botConfig
+    });
   };
 
   // Cria um novo projeto
   const createProject = async (nome: string, descricao?: string) => {
     if (!token) return;
     try {
+      // Salva o projeto anterior se houver
+      if (currentProjectId && pages && pages.length > 0) {
+        try {
+          await axios.put(`${API_URL}/projetos/${currentProjectId}/paginas`, {
+            paginas: pages,
+            customCss,
+            customJs: rawJs,
+            botConfig
+          });
+        } catch (e) {}
+      }
       const res = await axios.post(`${API_URL}/projetos`, { nome, descricao });
       const newId = res.data.id;
       await loadProjects();
@@ -749,6 +827,16 @@ function sendChatMessage(event) {
     setHistory([createdPageNodes]);
     setHistoryIdx(0);
     setSelectedId(null);
+
+    if (currentProjectId && token) {
+      axios.put(`${API_URL}/projetos/${currentProjectId}/paginas`, {
+        paginas: updatedPages,
+        customCss,
+        customJs: rawJs,
+        botConfig
+      })
+        .catch(err => console.error('Erro ao salvar página criada no banco:', err));
+    }
   };
 
   const removePage = (id: string) => {
@@ -764,6 +852,16 @@ function sendChatMessage(event) {
       setActivePageId(fallbackPage.id);
       setHistory([fallbackPage.nodes]);
       setHistoryIdx(0);
+    }
+
+    if (currentProjectId && token) {
+      axios.put(`${API_URL}/projetos/${currentProjectId}/paginas`, {
+        paginas: updatedPages,
+        customCss,
+        customJs: rawJs,
+        botConfig
+      })
+        .catch(err => console.error('Erro ao salvar exclusão de página no banco:', err));
     }
   };
 
@@ -945,6 +1043,66 @@ function sendChatMessage(event) {
     setRawCss(css);
   };
 
+  const [storeComponents, setStoreComponents] = useState<any[]>([]);
+
+  const loadStoreComponents = async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get(`${API_URL}/store/components`);
+      setStoreComponents(res.data);
+    } catch (err) {
+      console.error('Erro ao carregar componentes da loja:', err);
+    }
+  };
+
+  const addStoreComponentNode = (componentId: string, parentId?: string | null) => {
+    const compIdParsed = parseInt(componentId, 10);
+    const comp = storeComponents.find(c => c.id === compIdParsed || c.id === componentId);
+    if (!comp) {
+      console.warn('Componente não localizado na loja:', componentId);
+      return;
+    }
+
+    let payloadNode: ElementNode;
+    try {
+      payloadNode = typeof comp.component_payload === 'string'
+        ? JSON.parse(comp.component_payload)
+        : comp.component_payload;
+    } catch (e) {
+      console.error('Erro ao decodificar estrutura do componente:', e);
+      return;
+    }
+
+    const regenerateIds = (n: ElementNode): ElementNode => ({
+      ...n,
+      id: 'el_' + Math.random().toString(36).substring(2, 9),
+      children: n.children ? n.children.map(regenerateIds) : []
+    });
+
+    const newNode = regenerateIds(payloadNode);
+    let updated: ElementNode[];
+
+    if (!parentId || parentId === 'root') {
+      updated = [...nodes, newNode];
+    } else {
+      updated = findAndModifyNode(nodes, parentId, node => ({
+        ...node,
+        children: [...(node.children || []), newNode]
+      }));
+    }
+
+    pushHistory(updated);
+    setSelectedId(newNode.id);
+  };
+
+  useEffect(() => {
+    if (token) {
+      loadStoreComponents();
+    } else {
+      setStoreComponents([]);
+    }
+  }, [token]);
+
   const getFullDocument = () => {
     return generateFullDoc(nodes, rawCss, rawJs, activePage.seo.title, activePage.seo.description, activePage.seo.keywords);
   };
@@ -999,7 +1157,12 @@ function sendChatMessage(event) {
         botConfig,
         updateBotConfig,
         isBotModalOpen,
-        setIsBotModalOpen
+        setIsBotModalOpen,
+        storeComponents,
+        loadStoreComponents,
+        addStoreComponentNode,
+        isStoreOpen,
+        setIsStoreOpen
       }}
     >
       {children}

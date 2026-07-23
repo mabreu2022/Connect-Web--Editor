@@ -8,7 +8,19 @@ interface RenderNodeProps {
 }
 
 const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
-  const { activePage, selectedId, setSelectedId, setHoveredId, updateNode, updateNodeStyles, addNode, moveNodeInTree } = useEditor();
+  const { 
+    activePage, 
+    pages, 
+    switchPage, 
+    selectedId, 
+    setSelectedId, 
+    setHoveredId, 
+    updateNode, 
+    updateNodeStyles, 
+    addNode, 
+    moveNodeInTree,
+    addStoreComponentNode
+  } = useEditor();
   const isSelected = selectedId === node.id;
   const [dropPosition, setDropPosition] = React.useState<'before' | 'after' | null>(null);
 
@@ -45,9 +57,14 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
       return;
     }
 
-    const typeDropped = e.dataTransfer.getData('text/plain') as ComponentType;
+    const typeDropped = e.dataTransfer.getData('text/plain');
     if (typeDropped) {
-      addNode(typeDropped, node.id);
+      if (typeDropped.startsWith('store-component:')) {
+        const storeId = typeDropped.substring('store-component:'.length);
+        addStoreComponentNode(storeId, node.id);
+      } else {
+        addNode(typeDropped as ComponentType, node.id);
+      }
     }
   };
 
@@ -55,6 +72,18 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
     e.preventDefault();
     e.stopPropagation();
     setSelectedId(node.id);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (tagLower === 'a' && node.attributes.href) {
+      e.preventDefault();
+      e.stopPropagation();
+      const href = node.attributes.href;
+      const targetPage = pages.find(p => p.fileName === href);
+      if (targetPage) {
+        switchPage(targetPage.id);
+      }
+    }
   };
 
   const handleBlurText = (e: React.FocusEvent<HTMLElement>) => {
@@ -143,6 +172,7 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
       setHoveredId(null);
     },
     onClick: handleClick,
+    onDoubleClick: handleDoubleClick,
     onDragStart: handleDragStart,
     onDragOver: handleDragOver,
     onDragLeave: handleDragLeave,
@@ -271,7 +301,16 @@ const RenderNode: React.FC<RenderNodeProps> = ({ node }) => {
 };
 
 export const VisualCanvas: React.FC = () => {
-  const { nodes, viewport, setViewport, addNode, setSelectedId, rawCss, activePage } = useEditor();
+  const { 
+    nodes, 
+    viewport, 
+    setViewport, 
+    addNode, 
+    setSelectedId, 
+    rawCss, 
+    activePage,
+    addStoreComponentNode 
+  } = useEditor();
 
   const handleCanvasDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -279,9 +318,14 @@ export const VisualCanvas: React.FC = () => {
 
   const handleCanvasDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const typeDropped = e.dataTransfer.getData('text/plain') as ComponentType;
+    const typeDropped = e.dataTransfer.getData('text/plain');
     if (typeDropped) {
-      addNode(typeDropped, null);
+      if (typeDropped.startsWith('store-component:')) {
+        const storeId = typeDropped.substring('store-component:'.length);
+        addStoreComponentNode(storeId, null);
+      } else {
+        addNode(typeDropped as ComponentType, null);
+      }
     }
   };
 

@@ -82,12 +82,16 @@ const PALETTE_ITEMS: PaletteItemDef[] = [
 ];
 
 export const ComponentPalette: React.FC = () => {
-  const { addNode, selectedId } = useEditor();
+  const { addNode, selectedId, storeComponents, addStoreComponentNode } = useEditor();
   const [search, setSearch] = useState('');
 
   const filteredItems = PALETTE_ITEMS.filter(item =>
     item.label.toLowerCase().includes(search.toLowerCase())
   );
+
+  const purchasedStoreItems = (storeComponents || [])
+    .filter((c: any) => c.adquirido)
+    .filter((c: any) => c.title.toLowerCase().includes(search.toLowerCase()));
 
   const categories: { key: ComponentCategory; title: string }[] = [
     { key: 'sections', title: '⭐ Seções Prontas (Preços/Depoimentos)' },
@@ -117,6 +121,33 @@ export const ComponentPalette: React.FC = () => {
           <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-dim)' }} />
         </div>
       </div>
+
+      {purchasedStoreItems.length > 0 && (
+        <div className="palette-category" style={{ border: '1px solid rgba(251, 113, 133, 0.25)', borderRadius: '8px', padding: '8px', marginBottom: '16px', background: 'rgba(251, 113, 133, 0.03)' }}>
+          <div className="category-title" style={{ color: '#fb7185', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+            <span>✨ Adquiridos (Loja)</span>
+            <span style={{ fontSize: '9px', background: '#fb7185', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 'bold' }}>LIFETIME</span>
+          </div>
+          <div className="palette-grid" style={{ marginTop: '8px' }}>
+            {purchasedStoreItems.map(item => (
+              <div
+                key={'store_' + item.id}
+                className="palette-item"
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('text/plain', 'store-component:' + item.id);
+                }}
+                onClick={() => addStoreComponentNode(item.id, selectedId)}
+                title="Clique para adicionar ou Arraste para o Canvas"
+                style={{ border: '1px solid rgba(251, 113, 133, 0.2)', backgroundColor: 'rgba(251, 113, 133, 0.05)' }}
+              >
+                <Sparkles size={20} style={{ color: '#fb7185' }} />
+                <span>{item.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {categories.map(cat => {
         const itemsInCat = filteredItems.filter(i => i.category === cat.key);

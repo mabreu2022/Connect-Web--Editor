@@ -20,7 +20,7 @@ interface Usuario {
 }
 interface Plano { pla_id: number; pla_nome: string; pla_preco_mes: number; pla_preco_ano: number; pla_max_pag: number; pla_max_proj: number; pla_max_exp: number; pla_ativo: number; pla_destaque: number; }
 
-type Tab = 'dashboard' | 'pendentes' | 'usuarios' | 'planos' | 'faturas' | 'config' | 'bot';
+type Tab = 'dashboard' | 'pendentes' | 'usuarios' | 'planos' | 'faturas' | 'config' | 'bot' | 'store';
 
 export const AdminPanel: React.FC = () => {
   const { user, logout } = useAuth();
@@ -32,6 +32,48 @@ export const AdminPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [editPlano, setEditPlano] = useState<Plano | null>(null);
   const [msgAction, setMsgAction] = useState('');
+
+  // Estados para a Loja Admin
+  const [storeComps, setStoreComps] = useState<any[]>([]);
+  const [storeOrders, setStoreOrders] = useState<any[]>([]);
+  const [newCompTitle, setNewCompTitle] = useState('');
+  const [newCompDesc, setNewCompDesc] = useState('');
+  const [newCompCategory, setNewCompCategory] = useState('sections');
+  const [newCompPrice, setNewCompPrice] = useState('19.90');
+  const [newCompThumb, setNewCompThumb] = useState('');
+  const [newCompPayload, setNewCompPayload] = useState('');
+
+  // Estados para a Fábrica de Componentes por IA
+  const [aiDescription, setAiDescription] = useState('');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'groq' | 'ollama'>('gemini');
+  const [aiModel, setAiModel] = useState('');
+  const [aiOllamaUrl, setAiOllamaUrl] = useState('http://localhost:11434');
+  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
+
+  const fetchOllamaModels = async (url: string) => {
+    try {
+      const response = await fetch(`${url}/api/tags`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.models)) {
+          const names = data.models.map((m: any) => m.name);
+          setOllamaModels(names);
+          if (names.length > 0) {
+            setAiModel(prev => names.includes(prev) ? prev : names[0]);
+          }
+        } else {
+          setOllamaModels([]);
+        }
+      } else {
+        setOllamaModels([]);
+      }
+    } catch (e) {
+      console.warn('Erro ao listar modelos do Ollama:', e);
+      setOllamaModels([]);
+    }
+  };
 
   // Configurações PIX do Admin
   const [pixConfig, setPixConfig] = useState({ chavePix: '', nomeRecebedor: '', cidadeRecebedor: '' });
@@ -62,9 +104,40 @@ export const AdminPanel: React.FC = () => {
       else if (t === 'faturas') { const r = await axios.get(`${API_URL}/admin/faturas`); setFaturas(r.data); }
       else if (t === 'config') { const r = await axios.get(`${API_URL}/admin/config-pix`); setPixConfig(r.data); }
       else if (t === 'bot') { const r = await axios.get(`${API_URL}/admin/config-bot`); setBotConfig(r.data); }
+      else if (t === 'store') {
+        const [compsRes, ordersRes] = await Promise.all([
+          axios.get(`${API_URL}/store/components`),
+          axios.get(`${API_URL}/store/admin/orders`)
+        ]);
+        setStoreComps(compsRes.data || []);
+        setStoreOrders(ordersRes.data || []);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    const savedProvider = localStorage.getItem('cwe_ai_provider');
+    const savedApiKey = localStorage.getItem('cwe_ai_api_key');
+    const savedModel = localStorage.getItem('cwe_ai_model');
+    const savedOllamaUrl = localStorage.getItem('cwe_ai_ollama_url');
+
+    if (savedProvider) setAiProvider(savedProvider as any);
+    if (savedApiKey) setAiApiKey(savedApiKey);
+    if (savedModel) setAiModel(savedModel);
+    if (savedOllamaUrl) {
+      setAiOllamaUrl(savedOllamaUrl);
+      if (savedProvider === 'ollama') {
+        fetchOllamaModels(savedOllamaUrl);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (aiProvider === 'ollama') {
+      fetchOllamaModels(aiOllamaUrl);
+    }
+  }, [aiProvider, aiOllamaUrl]);
 
   useEffect(() => { loadTab(tab); }, [tab]);
 
@@ -103,6 +176,110 @@ export const AdminPanel: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const handleGenerateWithIA = async () => {
+    if (!aiDescription.trim()) {
+      alert('Por favor, descreva o componente que deseja criar!');
+      return;
+    }
+    setAiLoading(true);
+
+    // Salva preferências no navegador
+    localStorage.setItem('cwe_ai_provider', aiProvider);
+    localStorage.setItem('cwe_ai_api_key', aiApiKey);
+    localStorage.setItem('cwe_ai_model', aiModel);
+    localStorage.setItem('cwe_ai_ollama_url', aiOllamaUrl);
+
+    try {
+      let resultData: any = null;
+
+      if (aiProvider === 'ollama') {
+        const systemPrompt = `Você é um arquiteto especialista em front-end e web design premium. Sua tarefa é ler a descrição de um componente web em formato livre ou markdown e gerar a estrutura JSON completa compatível com o Connect Web Editor.
+
+O JSON retornado DEVE seguir estritamente o formato de objeto abaixo:
+{
+  "title": "Título comercial do componente",
+  "description": "Descrição comercial curta contendo as principais características",
+  "category": "sections" | "forms" | "ui" | "templates",
+  "price": 19.90,
+  "thumbnail_url": "uma URL de imagem do unsplash relacionada ao componente",
+  "component_payload": {
+    "id": "el_root",
+    "type": "container" | "section" | "heading" | "paragraph" | "image" | "link" | "button" | "form" | "grid-2" | "grid-3" | "card",
+    "tagName": "div" | "section" | "h1" | "h2" | "p" | "img" | "a" | "button" | "form",
+    "label": "Nome amigável do nó",
+    "content": "Conteúdo de texto se aplicável (ex: título, parágrafo, texto do botão)",
+    "attributes": {},
+    "styles": {
+      "display": "flex",
+      "flexDirection": "column",
+      "padding": "24px",
+      "backgroundColor": "#1e293b",
+      "color": "#ffffff",
+      "fontFamily": "sans-serif",
+      "borderRadius": "8px"
+    },
+    "children": []
+  }
+}
+
+Regras obrigatórias:
+1. O nó raiz (component_payload) DEVE ter id "el_root".
+2. Todos os nós filhos (children) recursivos devem ter IDs no formato "el_xxxxxxx" onde xxxxxxx é um código alfanumérico aleatório de 7 caracteres.
+3. Use estilos CSS inline bonitos (cores modernas, sombras shadow, bordas suaves, layouts flex/grid limpos) em camelCase (ex: backgroundColor, borderRadius, justifyContent, alignItems, flexWrap, gap, minHeight, maxWidth, transition, boxShadow).
+4. Crie estruturas complexas, organizadas e visualmente ricas com containers, headings, parágrafos, botões e imagens adequados.
+5. Retorne APENAS o JSON puro, sem comentários ou blocos de código markdown.
+
+Descrição do usuário: "${aiDescription}"`;
+
+        const response = await fetch(`${aiOllamaUrl || 'http://localhost:11434'}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: aiModel || 'llama3',
+            messages: [{ role: 'user', content: systemPrompt }],
+            stream: false,
+            format: 'json'
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro na conexão com o Ollama local: status ${response.status}. Certifique-se de que o Ollama está rodando e com CORS habilitado (OLLAMA_ORIGINS=*).`);
+        }
+
+        const data = await response.json();
+        const contentText = data.message?.content;
+        if (!contentText) {
+          throw new Error('Nenhum conteúdo retornado pelo Ollama local.');
+        }
+        resultData = JSON.parse(contentText.trim());
+      } else {
+        const res = await axios.post(`${API_URL}/store/admin/generate-component`, {
+          description: aiDescription,
+          provider: aiProvider,
+          apiKey: aiApiKey || undefined,
+          model: aiModel || undefined
+        });
+        resultData = res.data;
+      }
+
+      if (resultData) {
+        setNewCompTitle(resultData.title || '');
+        setNewCompDesc(resultData.description || '');
+        if (resultData.category) setNewCompCategory(resultData.category);
+        if (resultData.price) setNewCompPrice(String(resultData.price));
+        if (resultData.thumbnail_url) setNewCompThumb(resultData.thumbnail_url);
+        if (resultData.component_payload) {
+          setNewCompPayload(JSON.stringify(resultData.component_payload, null, 2));
+        }
+        alert('✨ Estrutura gerada com sucesso pela IA e preenchida no formulário!');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erro ao gerar componente com a IA.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const toggleStatus = async (id: number, status: number) => {
     await axios.patch(`${API_URL}/admin/usuarios/${id}/status`, { status });
     setUsuarios(prev => prev.map(u => u.usu_id === id ? { ...u, usu_status: status } : u));
@@ -129,6 +306,7 @@ export const AdminPanel: React.FC = () => {
     { id: 'faturas', icon: '🧾', label: 'Faturas' },
     { id: 'config', icon: '⚙️', label: 'Config PIX' },
     { id: 'bot', icon: '🤖', label: 'Bot & QAP' },
+    { id: 'store', icon: '🛍️', label: 'Loja Admin', count: storeOrders.filter((o: any) => o.status === 'pending').length || undefined }
   ];
 
   return (
@@ -484,6 +662,288 @@ export const AdminPanel: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ===== LOJA ADMIN ===== */}
+        {!loading && tab === 'store' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '30px', margin: '0' }}>
+            
+            {/* Listagem de Comprovantes & Catálogo */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Pedidos Pix Pendentes da Loja */}
+              <div style={S.panel}>
+                <h3 style={{ color: '#f1f5f9', margin: '0 0 16px', fontSize: '16px' }}>⏳ Pedidos Pix Pendentes (Componentes)</h3>
+                {storeOrders.filter(o => o.status === 'pending').length === 0 ? (
+                  <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Nenhum Pix de componentes pendente de aprovação.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {storeOrders.filter(o => o.status === 'pending').map((ord: any) => (
+                      <div key={ord.id} style={{ background: '#1e293b', padding: '16px', borderRadius: '8px', border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#cbd5e1' }}>
+                          <span>Cliente: <strong>{ord.usuario.nome}</strong> ({ord.usuario.email})</span>
+                          <span>{new Date(ord.criado).toLocaleString()}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0f172a', padding: '10px', borderRadius: '6px', fontSize: '13px' }}>
+                          <span>Componente: <strong>{ord.componente.title}</strong></span>
+                          <strong style={{ color: '#fb7185' }}>R$ {ord.componente.price.toFixed(2)}</strong>
+                        </div>
+                        {ord.comprovante && (
+                          <button 
+                            onClick={() => {
+                              setZoomLevel(1);
+                              setViewComprovante({
+                                url: ord.comprovante,
+                                usuario: { usu_id: ord.usuario.id, usu_nome: ord.usuario.nome, usu_email: ord.usuario.email } as any
+                              });
+                            }}
+                            style={S.viewBtn}
+                          >
+                            🖼️ Ver Comprovante Pix
+                          </button>
+                        )}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            onClick={async () => {
+                              if (!confirm('Aprovar este pagamento e liberar o componente?')) return;
+                              await axios.post(`${API_URL}/store/admin/orders/${ord.id}/approve`);
+                              alert('Aprovado!');
+                              loadTab('store');
+                            }} 
+                            style={{ ...S.approveBtn, flex: 1, padding: '8px' }}
+                          >
+                            ✔️ Aprovar
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (!confirm('Rejeitar este pagamento?')) return;
+                              await axios.post(`${API_URL}/store/admin/orders/${ord.id}/reject`);
+                              alert('Rejeitado!');
+                              loadTab('store');
+                            }} 
+                            style={{ ...S.editBtn, background: '#ef4444', color: '#fff', border: 'none', padding: '8px' }}
+                          >
+                            ❌ Rejeitar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Catálogo de Componentes à Venda */}
+              <div style={S.panel}>
+                <h3 style={{ color: '#f1f5f9', margin: '0 0 16px', fontSize: '16px' }}>🛍️ Catálogo de Componentes à Venda</h3>
+                <table style={S.table}>
+                  <thead>
+                    <tr>
+                      <th style={S.th}>Imagem</th>
+                      <th style={S.th}>Título</th>
+                      <th style={S.th}>Categoria</th>
+                      <th style={S.th}>Preço</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {storeComps.map((comp: any) => (
+                      <tr key={comp.id}>
+                        <td style={S.td}>
+                          <img src={comp.thumbnail_url} alt={comp.title} style={{ width: '50px', height: '35px', objectFit: 'cover', borderRadius: '4px' }} />
+                        </td>
+                        <td style={S.td}><strong>{comp.title}</strong></td>
+                        <td style={S.td}>{comp.category}</td>
+                        <td style={S.td}>R$ {comp.price.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+
+            {/* Coluna 2: Cadastro de Novo Componente */}
+            <div style={S.panel}>
+              <h3 style={{ color: '#f1f5f9', margin: '0 0 16px', fontSize: '16px' }}>➕ Cadastrar Componente</h3>
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!newCompTitle || !newCompPayload) {
+                    alert('Preencha o título e a estrutura JSON.');
+                    return;
+                  }
+                  let parsedPayload;
+                  try {
+                    parsedPayload = JSON.parse(newCompPayload);
+                  } catch(e) {
+                    alert('JSON de estrutura inválido!');
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    await axios.post(`${API_URL}/store/admin/components`, {
+                      title: newCompTitle,
+                      description: newCompDesc,
+                      category: newCompCategory,
+                      price: parseFloat(newCompPrice),
+                      thumbnail_url: newCompThumb || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300',
+                      component_payload: parsedPayload
+                    });
+                    alert('Componente cadastrado com sucesso!');
+                    setNewCompTitle('');
+                    setNewCompDesc('');
+                    setNewCompPayload('');
+                    setNewCompThumb('');
+                    loadTab('store');
+                  } catch (err) {
+                    alert('Erro ao cadastrar componente.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+              >
+                {/* Fábrica por IA */}
+                <div style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <span style={{ fontSize: '12px', color: '#fb7185', fontWeight: 600 }}>🤖 Fábrica de Componentes por IA</span>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '10px', color: '#94a3b8' }}>Provedor IA</label>
+                      <select 
+                        value={aiProvider} 
+                        onChange={e => setAiProvider(e.target.value as any)}
+                        style={{ ...S.modalInput, color: '#f8fafc', backgroundColor: '#1e293b', border: '1px solid #475569', fontSize: '11px', height: '30px', padding: '0 8px', margin: 0, borderRadius: '4px' }}
+                      >
+                        <option style={{ color: '#f8fafc', backgroundColor: '#1e293b' }} value="gemini">Google Gemini</option>
+                        <option style={{ color: '#f8fafc', backgroundColor: '#1e293b' }} value="openai">OpenAI</option>
+                        <option style={{ color: '#f8fafc', backgroundColor: '#1e293b' }} value="groq">Groq</option>
+                        <option style={{ color: '#f8fafc', backgroundColor: '#1e293b' }} value="ollama">Ollama Local</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '10px', color: '#94a3b8' }}>Modelo {aiProvider === 'ollama' && ollamaModels.length > 0 ? '' : '(Opcional)'}</label>
+                      {aiProvider === 'ollama' && ollamaModels.length > 0 ? (
+                        <select
+                          value={aiModel}
+                          onChange={e => setAiModel(e.target.value)}
+                          style={{ ...S.modalInput, color: '#f8fafc', backgroundColor: '#1e293b', border: '1px solid #475569', fontSize: '11px', height: '30px', padding: '0 8px', margin: 0, borderRadius: '4px' }}
+                        >
+                          {ollamaModels.map(m => (
+                            <option key={m} style={{ color: '#f8fafc', backgroundColor: '#1e293b' }} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input 
+                          type="text" 
+                          placeholder={aiProvider === 'gemini' ? 'gemini-1.5-flash' : aiProvider === 'openai' ? 'gpt-4o-mini' : aiProvider === 'groq' ? 'llama-3.1-70b-versatile' : 'llama3'} 
+                          value={aiModel} 
+                          onChange={e => setAiModel(e.target.value)}
+                          style={{ ...S.modalInput, fontSize: '11px', height: '30px', margin: 0 }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    placeholder="Descreva o que quer gerar. Ex: Seção Hero futurista com um botão de gradiente roxo e título animado"
+                    value={aiDescription}
+                    onChange={e => setAiDescription(e.target.value)}
+                    style={{ ...S.modalInput, fontSize: '11px', margin: 0 }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {aiProvider === 'ollama' ? (
+                      <input
+                        type="text"
+                        placeholder="http://localhost:11434"
+                        value={aiOllamaUrl}
+                        onChange={e => setAiOllamaUrl(e.target.value)}
+                        style={{ ...S.modalInput, fontSize: '11px', flex: 1, height: '30px', margin: 0 }}
+                      />
+                    ) : (
+                      <input
+                        type="password"
+                        placeholder="Chave API (opcional se no .env)"
+                        value={aiApiKey}
+                        onChange={e => setAiApiKey(e.target.value)}
+                        style={{ ...S.modalInput, fontSize: '11px', flex: 1, height: '30px', margin: 0 }}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleGenerateWithIA}
+                      disabled={aiLoading}
+                      style={{
+                        height: '30px',
+                        padding: '0 12px',
+                        background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 700,
+                        fontSize: '11px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {aiLoading ? 'Gerando...' : 'Gerar IA'}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={S.label2}>Título do Componente</label>
+                  <input type="text" style={S.modalInput} value={newCompTitle} onChange={e => setNewCompTitle(e.target.value)} placeholder="Ex: Galeria Premium" />
+                </div>
+                <div>
+                  <label style={S.label2}>Descrição</label>
+                  <textarea style={S.modalInput} rows={2} value={newCompDesc} onChange={e => setNewCompDesc(e.target.value)} placeholder="Detalhes do componente..." />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={S.label2}>Categoria</label>
+                    <select style={{ ...S.modalInput, color: '#f1f5f9', backgroundColor: '#0f172a' }} value={newCompCategory} onChange={e => setNewCompCategory(e.target.value)}>
+                      <option style={{ color: '#0f172a', backgroundColor: '#fff' }} value="sections">Seções (Sections)</option>
+                      <option style={{ color: '#0f172a', backgroundColor: '#fff' }} value="forms">Formulários</option>
+                      <option style={{ color: '#0f172a', backgroundColor: '#fff' }} value="ui">Componentes UI</option>
+                      <option style={{ color: '#0f172a', backgroundColor: '#fff' }} value="templates">Templates</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={S.label2}>Preço (R$)</label>
+                    <input type="number" step="0.01" style={S.modalInput} value={newCompPrice} onChange={e => setNewCompPrice(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <label style={S.label2}>Thumbnail URL</label>
+                  <input type="text" style={S.modalInput} value={newCompThumb} onChange={e => setNewCompThumb(e.target.value)} placeholder="https://images.unsplash.com/..." />
+                </div>
+                <div>
+                  <label style={S.label2}>Payload JSON da Estrutura</label>
+                  <textarea 
+                    style={{ ...S.modalInput, fontFamily: 'monospace', fontSize: '11px' }} 
+                    rows={6} 
+                    value={newCompPayload} 
+                    onChange={e => setNewCompPayload(e.target.value)} 
+                    placeholder='{ "type": "container", "tagName": "div", "children": [] }'
+                  />
+                  <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                    💡 Dica: Você também pode abrir o editor, selecionar um componente e cadastrá-lo por lá usando o botão "Usar Selecionado no Canvas" na aba Loja!
+                  </span>
+                </div>
+                <button type="submit" style={{ ...S.submitBtn, width: '100%', marginTop: '10px' }}>🚀 Publicar na Loja</button>
+              </form>
+            </div>
+
           </div>
         )}
       </main>

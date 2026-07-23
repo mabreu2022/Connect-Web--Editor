@@ -12,6 +12,8 @@ const assinaturasRoutes = require('./routes/assinaturas.routes');
 const faturasRoutes = require('./routes/faturas.routes');
 const projetosRoutes = require('./routes/projetos.routes');
 const adminRoutes = require('./routes/admin.routes');
+const storeRoutes = require('./routes/store.routes');
+const { initStoreDb } = require('./db/initStoreDb');
 
 const app = express();
 const server = http.createServer(app);
@@ -58,6 +60,7 @@ app.use('/api/assinaturas', assinaturasRoutes);
 app.use('/api/faturas', faturasRoutes);
 app.use('/api/projetos', projetosRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/store', storeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -74,4 +77,5 @@ server.listen(PORT, () => {
   console.log(`✅ Backend Connect SaaS rodando na porta ${PORT}`);
   console.log(`📹 WebRTC Signaling ativo em ws://localhost:${PORT}/socket.io`);
   console.log(`🔗 Sala de chamada disponível em http://localhost:${PORT}/call`);
+  initStoreDb().catch(err => console.error('[DB-INIT] Falha catastrófica ao iniciar banco da loja:', err));
 });

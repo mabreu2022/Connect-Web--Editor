@@ -21,6 +21,7 @@ export const PropertyInspector: React.FC = () => {
   } = useEditor();
 
   const imgInputRef = useRef<HTMLInputElement>(null);
+  const bgImgInputRef = useRef<HTMLInputElement>(null);
 
   if (!selectedId) {
     return (
@@ -79,6 +80,22 @@ export const PropertyInspector: React.FC = () => {
         const dataUrl = ev.target?.result as string;
         if (dataUrl) {
           updateNodeAttributes(node.id, { src: dataUrl });
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && node) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        if (dataUrl) {
+          handleStyleChange('backgroundImage', `url('${dataUrl}')`);
+          handleStyleChange('backgroundSize', 'cover');
+          handleStyleChange('backgroundPosition', 'center');
         }
       };
       reader.readAsDataURL(file);
@@ -672,6 +689,98 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         )}
       </div>
+
+      {/* Imagem de Fundo & Efeito Parallax */}
+      {['section', 'div', 'header', 'footer'].includes(tagLower) && (
+        <div className="inspector-section" style={{ backgroundColor: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '8px', padding: '12px' }}>
+          <input
+            type="file"
+            ref={bgImgInputRef}
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleBgImageUpload}
+          />
+
+          <div className="section-label" style={{ color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '12px' }}>
+            <ImageIcon size={14} />
+            Imagem de Fundo & Parallax
+          </div>
+
+          <button
+            className="btn-export"
+            style={{ width: '100%', marginBottom: '12px', backgroundColor: 'var(--accent-primary)', justifyContent: 'center' }}
+            onClick={() => bgImgInputRef.current?.click()}
+          >
+            <Upload size={14} />
+            Carregar Imagem de Fundo (HD)
+          </button>
+
+          <div className="field-group" style={{ marginBottom: '10px' }}>
+            <label>Ou URL da Imagem de Fundo</label>
+            <input
+              type="text"
+              className="field-input"
+              value={styles.backgroundImage ? styles.backgroundImage.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '') : ''}
+              onChange={(e) => {
+                const val = e.target.value.trim();
+                if (val) {
+                  handleStyleChange('backgroundImage', `url('${val}')`);
+                  handleStyleChange('backgroundSize', 'cover');
+                  handleStyleChange('backgroundPosition', 'center');
+                } else {
+                  handleStyleChange('backgroundImage', '');
+                }
+              }}
+              placeholder="https://exemplo.com/fundo.jpg"
+            />
+          </div>
+
+          {styles.backgroundImage && (
+            <>
+              <div className="field-group" style={{ marginBottom: '10px' }}>
+                <label>Efeito Parallax (Fundo Fixo)</label>
+                <select
+                  className="field-input"
+                  value={styles.backgroundAttachment || 'scroll'}
+                  onChange={(e) => handleStyleChange('backgroundAttachment', e.target.value)}
+                >
+                  <option value="scroll">Normal (Rolar com o site)</option>
+                  <option value="fixed">✨ Parallax (Imagem Fixa ao Rolar)</option>
+                </select>
+              </div>
+
+              <div className="box-model-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div className="field-group">
+                  <label>Tamanho do Fundo</label>
+                  <select
+                    className="field-input"
+                    value={styles.backgroundSize || 'cover'}
+                    onChange={(e) => handleStyleChange('backgroundSize', e.target.value)}
+                  >
+                    <option value="cover">Cover (Preencher)</option>
+                    <option value="contain">Contain (Manter Proporção)</option>
+                    <option value="auto">Auto (Original)</option>
+                  </select>
+                </div>
+                <div className="field-group">
+                  <label>Posição do Fundo</label>
+                  <select
+                    className="field-input"
+                    value={styles.backgroundPosition || 'center'}
+                    onChange={(e) => handleStyleChange('backgroundPosition', e.target.value)}
+                  >
+                    <option value="center">Centro</option>
+                    <option value="top">Topo</option>
+                    <option value="bottom">Rodapé</option>
+                    <option value="left">Esquerda</option>
+                    <option value="right">Direita</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Tipografia e Cores */}
       <div className="inspector-section">

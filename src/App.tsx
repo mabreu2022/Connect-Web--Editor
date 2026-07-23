@@ -13,11 +13,13 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { AdminPanel } from './pages/admin/AdminPanel';
 import { ManualPage } from './pages/manual/ManualPage';
+import { BotConfigModal } from './components/Bot/BotConfigModal';
+import { StoreModal } from './components/Store/StoreModal';
 import { Box, Layers, Files } from 'lucide-react';
 
 // ---- Editor principal ----
 const EditorLayout: React.FC = () => {
-  const { mode } = useEditor();
+  const { mode, isBotModalOpen, setIsBotModalOpen, isStoreOpen, setIsStoreOpen } = useEditor();
   const [activeSidebarTab, setActiveSidebarTab] = useState<'palette' | 'tree' | 'pages'>('palette');
 
   return (
@@ -56,6 +58,9 @@ const EditorLayout: React.FC = () => {
 
         <PropertyInspector />
       </div>
+
+      <BotConfigModal isOpen={isBotModalOpen} onClose={() => setIsBotModalOpen(false)} />
+      <StoreModal isOpen={isStoreOpen} onClose={() => setIsStoreOpen(false)} />
     </div>
   );
 };
