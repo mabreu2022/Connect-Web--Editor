@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Completo do Ollama & Gerador Lazarus MVC</title>
+    <script src="chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; margin: 0; }
+        .container { max-width: 900px; margin: 0 auto; background: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); border: 1px solid #2d2d2d; }
+        h2 { text-align: center; color: #4CAF50; margin-top: 0; margin-bottom: 25px; font-weight: 300; letter-spacing: 1px; }
+        
+        .status-panel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px; }
+        .status-box { background: #252525; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #333; transition: 0.3s; }
+        .status-box:hover { border-color: #4CAF50; }
+        .status-title { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-value { font-size: 18px; font-weight: bold; color: #4CAF50; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        /* Abas */
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #2d2d2d; gap: 5px; }
+        .tab { padding: 12px 18px; cursor: pointer; color: #888; font-weight: bold; transition: 0.3s; font-size: 13px; border-radius: 6px 6px 0 0; }
+        .tab:hover { color: #fff; background: #252525; }
+        .tab.active { color: #4CAF50; border-bottom: 3px solid #4CAF50; background: #252525; margin-bottom: -2px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #apiEventsArea { margin-top: 20px; background: #0c0c0c; padding: 12px; border-radius: 8px; font-family: monospace; height: 100px; overflow-y: auto; color: #777; font-size: 11px; border: 1px solid #222; }
+        #serverLogsArea { background: #050505; padding: 15px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; height: 250px; overflow-y: auto; color: #00ff66; font-size: 13px; line-height: 1.4; border: 1px solid #222; }
+
+        /* Estilos do Playground */
+        .playground-container { display: flex; flex-direction: column; gap: 12px; }
+        .controls { display: flex; gap: 10px; }
+        select, textarea, button, input { background: #2a2a2a; color: #fff; border: 1px solid #444; padding: 10px; border-radius: 6px; font-family: inherit; font-size: 14px; transition: 0.2s; }
+        select:focus, textarea:focus, input:focus { border-color: #4CAF50; outline: none; background: #333; }
+        select { flex-grow: 1; font-weight: bold; }
+        textarea { width: 100%; height: 120px; resize: vertical; box-sizing: border-box; }
+        button { cursor: pointer; font-weight: bold; border: none; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        button:hover { background: #3a3a3a; }
+        .btn-send { background: #2196F3; color: white; width: 120px; }
+        .btn-send:hover { background: #1976D2; }
+        
+        .action-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-save { background: #4CAF50; color: white; flex: 1; display: none; }
+        .btn-save:hover { background: #388E3C; }
+        .btn-compile { background: #9C27B0; color: white; flex: 1; }
+        .btn-compile:hover { background: #7B1FA2; }
+
+        #responseBox { background: #0c0c0c; min-height: 100px; padding: 15px; border-radius: 8px; white-space: pre-wrap; font-family: 'Consolas', 'Courier New', monospace; line-height: 1.5; color: #ccc; border: 1px solid #222; max-height: 350px; overflow-y: auto; }
+        .loading { color: #FF9800; font-style: italic; }
+
+        /* Estilos do Gerador Lazarus MVC */
+        .card { background: #252525; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #4CAF50; font-size: 16px; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 15px; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
+        .checkbox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; background: #181818; border-radius: 6px; max-height: 160px; overflow-y: auto; border: 1px solid #2d2d2d; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: #ccc; }
+        .checkbox-item input { cursor: pointer; width: 15px; height: 15px; margin: 0; }
+        .btn-connect { width: 100%; background: #4CAF50; color: white; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .btn-connect:hover { background: #45a049; }
+        .btn-generate-local { background: #00BCD4; color: white; flex: 1; padding: 12px; font-weight: bold; border-radius: 6px; }
+        .btn-generate-local:hover { background: #00acc1; }
+        .btn-generate-ai { background: #FF9800; color: white; flex: 1; padding: 12px; font-weight: bold; border-radius: 6px; }
+        .btn-generate-ai:hover { background: #f57c00; }
+        
+        .file-item { padding: 4px 8px; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+        .file-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>⚡ Dashboard Ollama & Gerador Lazarus MVC</h2>
+    
+    <div class="status-panel">
+        <div class="status-box">
+            <div class="status-title">Status da API</div>
+            <div id="serverStatus" class="status-value" style="color: #ff9800;">Conectando...</div>
+        </div>
+        <div class="status-box">
+            <div class="status-title">Modelo Ativo</div>
+            <div id="activeModel" class="status-value">-</div>
+        </div>
+        <div class="status-box">
+            <div class="status-title">Parâmetros / Quant.</div>
+            <div id="modelDetails" class="status-value">-</div>
+        </div>
+        <div class="status-box">
+            <div class="status-title">Descarrega em</div>
+            <div id="timeToDie" class="status-value">-</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('gpu', this)">Uso da GPU (%)</div>
+        <div class="tab" onclick="switchTab('vram', this)">Memória (VRAM/RAM)</div>
+        <div class="tab" onclick="switchTab('lazarusmvc', this)" style="color: #00BCD4;">Gerador Lazarus MVC</div>
+        <div class="tab" onclick="switchTab('playground', this)" style="color: #FF9800;">Playground (Testar Prompt)</div>
+        <div class="tab" onclick="switchTab('logs', this)">Logs do Servidor</div>
+    </div>
+
+    <!-- ABA 1 & 2: Gráficos -->
+    <div id="chartContent" class="tab-content active">
+        <canvas id="usageChart" width="400" height="150"></canvas>
+    </div>
+
+    <!-- ABA 3: Gerador Lazarus MVC -->
+    <div id="lazarusmvcContent" class="tab-content">
+        <div class="card">
+            <h3>🔌 Conexão com o Banco Firebird 5</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="fbHost">Host:</label>
+                    <input type="text" id="fbHost" value="127.0.0.1">
+                </div>
+                <div class="form-group">
+                    <label for="fbPort">Porta:</label>
+                    <input type="text" id="fbPort" value="3050">
+                </div>
+                <div class="form-group">
+                    <label for="fbUser">Usuário:</label>
+                    <input type="text" id="fbUser" value="SYSDBA">
+                </div>
+                <div class="form-group">
+                    <label for="fbPass">Senha:</label>
+                    <input type="password" id="fbPass" value="masterkey">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <label for="fbDatabase">Caminho Absoluto do Banco (.fdb):</label>
+                <input type="text" id="fbDatabase" placeholder="Ex: C:\MeusDados\banco.fdb" style="width: 100%;">
+            </div>
+            
+            <h3 style="margin-top: 20px;">📁 Configuração do Sistema Lazarus</h3>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="projectName">Nome do Projeto:</label>
+                    <input type="text" id="projectName" placeholder="Ex: MeuSistemaERP" value="SistemaERP">
+                </div>
+                <div class="form-group">
+                    <label for="outputDir">Diretório de Geração (Destino):</label>
+                    <input type="text" id="outputDir" value="C:\Projetos Antigravity\Gerador de Programas Lazarus\sistemas_gerados" style="width: 100%;">
+                </div>
+            </div>
+            
+            <div class="form-grid" style="margin-top: 10px;">
+                <div class="form-group">
+                    <label for="templateSelector">Modelo de Design (Template):</label>
+                    <select id="templateSelector">
+                        <option value="">Aguardando conexão...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modelSelectorMVC">Modelo Ollama (para Geração via IA):</label>
+                    <select id="modelSelectorMVC">
+                        <option value="">Carregando modelos do Ollama...</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-connect" id="btnConnectDb" onclick="conectarBanco()">🔌 Conectar ao Banco e Carregar Estruturas</button>
+        </div>
+
+        <!-- Painel de Tabelas e Ações -->
+        <div id="fbSchemaPanel" class="card" style="display: none;">
+            <h3>📋 Selecione as Tabelas para gerar CRUD</h3>
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+                <button onclick="selecionarTodasTabelas(true)" style="padding: 6px 12px; font-size: 12px;">Selecionar Todas</button>
+                <button onclick="selecionarTodasTabelas(false)" style="padding: 6px 12px; font-size: 12px;">Desmarcar Todas</button>
+            </div>
+            <div id="tablesCheckboxList" class="checkbox-grid"></div>
+
+            <div class="action-buttons" style="margin-top: 20px;">
+                <button class="btn-generate-local" id="btnGenLocal" onclick="gerarProjetoLocal()">⚡ Gerar Sistema Completo (Template)</button>
+                <button class="btn-generate-ai" onclick="prepararPromptOllama()">🤖 Montar Prompt para IA (Ollama)</button>
+            </div>
+        </div>
+
+        <!-- Resultado de Geração -->
+        <div id="generationResultPanel" class="card" style="display: none; border-color: #4CAF50;">
+            <h3 id="resultTitle" style="color: #4CAF50; border-bottom-color: #4CAF50;">✅ Geração Concluída!</h3>
+            <p id="resultMsg" style="margin: 5px 0 15px 0; font-size: 14px;"></p>
+            <div>
+                <strong>Arquivos Criados:</strong>
+                <div id="createdFilesList" style="margin-top: 8px; max-height: 180px; overflow-y: auto; background: #0c0c0c; padding: 10px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 12px; color: #88ff88; border: 1px solid #222;"></div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn-compile" id="compileExternalBtn" style="width: 100%; padding: 12px;" onclick="compilarProjetoExterno()">🛠️ Compilar e Rodar Lazarus (.lpi)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA 4: Playground -->
+    <div id="playgroundContent" class="tab-content">
+        <div class="playground-container">
+            <div class="controls">
+                <select id="modelSelector">
+                    <option value="">Carregando modelos...</option>
+                </select>
+                <button class="btn-send" id="sendBtn" onclick="generateResponse()">Enviar</button>
+            </div>
+            <textarea id="promptInput" placeholder="Ex: Gere o código fonte em Free Pascal de um sistema CRUD de clientes..."></textarea>
+            
+            <div style="margin-top: 10px;"><strong>Resposta:</strong></div>
+            <div id="responseBox">Nenhuma resposta gerada ainda.</div>
+            
+            <div class="action-buttons">
+                <button class="btn-save" id="saveBtn" onclick="saveToFile()">Salvar Texto em .TXT</button>
+                <button class="btn-compile" id="compileBtn" style="display: none;" onclick="compilarCodigoGerado()">Compilar e Rodar Lazarus (.pas)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA 5: Logs -->
+    <div id="logsContent" class="tab-content">
+        <div id="serverLogsArea">Carregando logs do Node.js...</div>
+    </div>
+
+    <div id="apiEventsArea">Aguardando eventos...</div>
+</div>
+
+<script>
+    let currentMode = 'gpu'; 
+    const historyLimit = 25;
+    const history = { labels: [], gpu_usage: [], vram: [], ram: [] };
+    let usageChart = null; 
+    let dbSchema = null; 
+    let generatedLpiPath = "";
+
+    // Inicialização segura do gráfico
+    try {
+        const ctx = document.getElementById('usageChart').getContext('2d');
+        const chartConfig = {
+            type: 'line',
+            data: {
+                labels: history.labels,
+                datasets: [{
+                    label: 'Esforço de Processamento da Placa de Vídeo (%)',
+                    data: history.gpu_usage,
+                    borderColor: '#FF5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', borderWidth: 2, fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, suggestedMax: 100 } }, animation: { duration: 0 } }
+        };
+        usageChart = new Chart(ctx, chartConfig);
+    } catch (e) {
+        console.error("Chart.js falhou ao carregar:", e);
+        document.getElementById('chartContent').innerHTML = "<p style='color:red; text-align:center;'>A biblioteca do gráfico não pôde ser carregada. Verifique sua conexão com a internet ou a tag de importação do Chart.js.</p>";
+    }
+
+    function switchTab(mode, element) {
+        currentMode = mode;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        element.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        if (mode === 'logs') {
+            document.getElementById('logsContent').classList.add('active');
+        } else if (mode === 'playground') {
+            document.getElementById('playgroundContent').classList.add('active');
+            loadAvailableModels(); 
+        } else if (mode === 'lazarusmvc') {
+            document.getElementById('lazarusmvcContent').classList.add('active');
+            loadTemplates();
+            loadAvailableModelsMVC();
+        } else {
+            document.getElementById('chartContent').classList.add('active');
+            
+            if (usageChart) {
+                if (mode === 'gpu') {
+                    usageChart.options.scales.y.suggestedMax = 100;
+                    usageChart.data.datasets = [{
+                        label: 'Esforço de Processamento da Placa de Vídeo (%)',
+                        data: history.gpu_usage, borderColor: '#FF5722', backgroundColor: 'rgba(255, 87, 34, 0.2)', borderWidth: 2, fill: true, tension: 0.3
+                    }];
+                } else if (mode === 'vram') {
+                    usageChart.options.scales.y.suggestedMax = 8;
+                    usageChart.data.datasets = [
+                        { label: 'VRAM Alocada (GB)', data: history.vram, borderColor: '#4CAF50', backgroundColor: 'rgba(76, 175, 80, 0.2)', borderWidth: 2, fill: true, tension: 0.3 },
+                        { label: 'RAM Alocada (GB)', data: history.ram, borderColor: '#2196F3', backgroundColor: 'transparent', borderWidth: 2, fill: false, tension: 0.3 }
+                    ];
+                }
+                usageChart.update();
+            }
+        }
+    }
+
+    function logEvent(msg) {
+        const area = document.getElementById('apiEventsArea');
+        area.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}<br>` + area.innerHTML;
+    }
+
+    function calculateTTL(expiresAtString) {
+        if (!expiresAtString || expiresAtString.startsWith("0001")) return "Fixo na Memória";
+        const expiresAt = new Date(expiresAtString).getTime();
+        const now = Date.now();
+        const diffSeconds = Math.floor((expiresAt - now) / 1000);
+        if (diffSeconds < 0) return "Em Uso / Sem Limite"; 
+        return `${Math.floor(diffSeconds / 60)}m ${diffSeconds % 60}s`;
+    }
+
+    async function fetchAllData() {
+        const now = new Date().toLocaleTimeString();
+        let gpuProcessamento = 0; let vramGB = 0; let ramGB = 0;
+
+        try {
+            const resOllama = await fetch('http://localhost:11434/api/ps');
+            if (!resOllama.ok) throw new Error();
+            const dataOllama = await resOllama.json();
+            const models = dataOllama.models || [];
+            
+            document.getElementById('serverStatus').innerText = "Online";
+            document.getElementById('serverStatus').style.color = "#4CAF50";
+
+            if (models.length > 0) {
+                const model = models[0];
+                document.getElementById('activeModel').innerText = model.name;
+                document.getElementById('modelDetails').innerText = `${model.details.parameter_size} / ${model.details.quantization_level}`;
+                document.getElementById('timeToDie').innerText = calculateTTL(model.expires_at);
+
+                const totalMem = model.size || 0;
+                const vram = model.size_vram || 0;
+                vramGB = (vram / 1024 / 1024 / 1024).toFixed(2);
+                ramGB = Math.max(0, ((totalMem - vram) / 1024 / 1024 / 1024)).toFixed(2);
+            } else {
+                document.getElementById('activeModel').innerText = "Nenhum";
+                document.getElementById('modelDetails').innerText = "-";
+                document.getElementById('timeToDie').innerText = "-";
+            }
+
+            try {
+                const resNvidia = await fetch('http://localhost:3002/api/gpu');
+                const dataNvidia = await resNvidia.json();
+                gpuProcessamento = dataNvidia.usage || 0;
+            } catch (e) {}
+
+            if (history.labels.length >= historyLimit) { history.labels.shift(); history.vram.shift(); history.ram.shift(); history.gpu_usage.shift(); }
+            history.labels.push(now); history.vram.push(vramGB); history.ram.push(ramGB); history.gpu_usage.push(gpuProcessamento);
+            
+            if (usageChart) usageChart.update();
+            
+        } catch (error) {
+            document.getElementById('serverStatus').innerText = "Offline";
+            document.getElementById('serverStatus').style.color = "#f44336";
+        }
+    }
+
+    async function fetchServerLogs() {
+        if (currentMode !== 'logs') return; 
+        try {
+            const response = await fetch('http://localhost:3002/api/logs');
+            const data = await response.json();
+            if (data.logs) document.getElementById('serverLogsArea').innerHTML = data.logs.join('<br>');
+        } catch (error) {}
+    }
+
+    let lastGeneratedText = "";
+
+    async function loadAvailableModels() {
+        try {
+            const res = await fetch('http://localhost:11434/api/tags');
+            const data = await res.json();
+            const selector = document.getElementById('modelSelector');
+            selector.innerHTML = ''; 
+            
+            data.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.name;
+                option.textContent = model.name;
+                selector.appendChild(option);
+            });
+        } catch (error) {
+            document.getElementById('modelSelector').innerHTML = '<option value="">Erro ao carregar modelos</option>';
+        }
+    }
+
+    async function loadAvailableModelsMVC() {
+        try {
+            const res = await fetch('http://localhost:11434/api/tags');
+            const data = await res.json();
+            const selector = document.getElementById('modelSelectorMVC');
+            selector.innerHTML = ''; 
+            
+            data.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.name;
+                option.textContent = model.name;
+                selector.appendChild(option);
+            });
+        } catch (error) {
+            document.getElementById('modelSelectorMVC').innerHTML = '<option value="">Erro ao carregar modelos</option>';
+        }
+    }
+
+    async function loadTemplates() {
+        try {
+            const res = await fetch('http://localhost:3002/api/templates');
+            const data = await res.json();
+            const selector = document.getElementById('templateSelector');
+            selector.innerHTML = '';
+            
+            if (data.templates && data.templates.length > 0) {
+                data.templates.forEach(tpl => {
+                    const option = document.createElement('option');
+                    option.value = tpl.id;
+                    option.textContent = tpl.nome;
+                    selector.appendChild(option);
+                });
+            } else {
+                selector.innerHTML = '<option value="">Nenhum template encontrado</option>';
+            }
+        } catch (error) {
+            document.getElementById('templateSelector').innerHTML = '<option value="">Erro ao conectar com a API</option>';
+        }
+    }
+
+    async function conectarBanco() {
+        const host = document.getElementById('fbHost').value;
+        const port = document.getElementById('fbPort').value;
+        const user = document.getElementById('fbUser').value;
+        const pass = document.getElementById('fbPass').value;
+        const database = document.getElementById('fbDatabase').value;
+        const btn = document.getElementById('btnConnectDb');
+
+        if (!database) {
+            alert("Por favor, preencha o caminho absoluto do arquivo .fdb!");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "Conectando...";
+        logEvent(`Tentando conectar ao banco: ${database}...`);
+
+        try {
+            const response = await fetch('http://localhost:3002/api/database/schema', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ host, port, user, password: pass, database })
+            });
+            const data = await response.json();
+
+            if (data.sucesso) {
+                dbSchema = data.tabelas;
+                logEvent(`Conectado ao Firebird com sucesso! ${dbSchema.length} tabelas encontradas.`);
+                
+                const container = document.getElementById('tablesCheckboxList');
+                container.innerHTML = '';
+
+                dbSchema.forEach(tbl => {
+                    const label = document.createElement('label');
+                    label.className = 'checkbox-item';
+                    
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.value = tbl.nome;
+                    cb.checked = true; // Por padrão marca todas
+                    
+                    label.appendChild(cb);
+                    label.appendChild(document.createTextNode(tbl.nome));
+                    container.appendChild(label);
+                });
+
+                document.getElementById('fbSchemaPanel').style.display = 'block';
+            } else {
+                alert("Falha na conexão: " + data.erro);
+                logEvent(`❌ Falha de conexão: ${data.erro}`);
+            }
+        } catch (e) {
+            alert("Erro de conexão ao servidor de API.");
+            console.error(e);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "🔌 Conectar ao Banco e Carregar Estruturas";
+        }
+    }
+
+    function selecionarTodasTabelas(check) {
+        document.querySelectorAll('#tablesCheckboxList input').forEach(cb => {
+            cb.checked = check;
+        });
+    }
+
+    async function gerarProjetoLocal() {
+        const host = document.getElementById('fbHost').value;
+        const port = document.getElementById('fbPort').value;
+        const user = document.getElementById('fbUser').value;
+        const pass = document.getElementById('fbPass').value;
+        const database = document.getElementById('fbDatabase').value;
+        
+        const projectName = document.getElementById('projectName').value;
+        const outputDir = document.getElementById('outputDir').value;
+        const templateId = document.getElementById('templateSelector').value;
+        const btn = document.getElementById('btnGenLocal');
+
+        const selectedTables = [];
+        document.querySelectorAll('#tablesCheckboxList input:checked').forEach(cb => {
+            selectedTables.push(cb.value);
+        });
+
+        if (selectedTables.length === 0) {
+            alert("Selecione ao menos uma tabela para gerar o CRUD!");
+            return;
+        }
+        if (!projectName.trim()) {
+            alert("Informe o nome do projeto!");
+            return;
+        }
+        if (!outputDir.trim()) {
+            alert("Informe o diretório de destino!");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = "Gerando Sistema...";
+        logEvent(`Gerando projeto Lazarus MVC local: ${projectName}...`);
+
+        try {
+            const response = await fetch('http://localhost:3002/api/generate-project', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    host, port, user, password: pass, database,
+                    projectName, outputDir, templateId, selectedTables
+                })
+            });
+            const data = await response.json();
+
+            if (data.sucesso) {
+                generatedLpiPath = data.lpi_path;
+                document.getElementById('resultMsg').innerText = data.mensagem;
+                
+                const list = document.getElementById('createdFilesList');
+                list.innerHTML = '';
+                data.arquivos.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `<span>📄 ${file}</span> <span style="color:#aaa; font-size:10px;">✓ criado</span>`;
+                    list.appendChild(item);
+                });
+
+                document.getElementById('generationResultPanel').style.display = 'block';
+                logEvent(`✅ Projeto ${projectName} gerado com sucesso!`);
+            } else {
+                alert("Erro ao gerar projeto: " + data.erro);
+                logEvent(`❌ Erro de geração: ${data.erro}`);
+            }
+        } catch (e) {
+            alert("Erro ao conectar com a API de geração.");
+            console.error(e);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "⚡ Gerar Sistema Completo (Template)";
+        }
+    }
+
+    async function compilarProjetoExterno() {
+        if (!generatedLpiPath) return;
+        const btn = document.getElementById('compileExternalBtn');
+        btn.disabled = true;
+        btn.innerText = "Compilando...";
+        logEvent("Iniciando compilação do Lazarus via lazbuild...");
+
+        try {
+            const response = await fetch('http://localhost:3002/api/compile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lpi_path: generatedLpiPath })
+            });
+            const data = await response.json();
+
+            if (data.sucesso) {
+                alert(data.mensagem);
+                logEvent("✅ Compilação realizada com sucesso! Janela executada.");
+            } else {
+                alert("Erro de compilação:\n\n" + data.mensagem);
+                logEvent("❌ Erro de compilação.");
+            }
+        } catch (e) {
+            alert("Erro de conexão ao compilar.");
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "🛠️ Compilar e Rodar Lazarus (.lpi)";
+        }
+    }
+
+    function prepararPromptOllama() {
+        if (!dbSchema) {
+            alert("Por favor, conecte no banco antes de preparar o prompt!");
+            return;
+        }
+
+        const selectedTablesNames = [];
+        document.querySelectorAll('#tablesCheckboxList input:checked').forEach(cb => {
+            selectedTablesNames.push(cb.value);
+        });
+
+        if (selectedTablesNames.length === 0) {
+            alert("Selecione ao menos uma tabela!");
+            return;
+        }
+
+        const selectedTables = dbSchema.filter(t => selectedTablesNames.includes(t.nome));
+        const host = document.getElementById('fbHost').value;
+        const port = document.getElementById('fbPort').value;
+        const user = document.getElementById('fbUser').value;
+        const pass = document.getElementById('fbPass').value;
+        const database = document.getElementById('fbDatabase').value;
+        const projectName = document.getElementById('projectName').value;
+
+        let tablesMeta = "";
+        selectedTables.forEach(tbl => {
+            tablesMeta += `Tabela: ${tbl.nome}\n`;
+            tbl.campos.forEach(c => {
+                const pkStr = c.eh_pk ? " (CHAVE PRIMÁRIA)" : "";
+                const fkStr = c.eh_fk ? ` (CHAVE ESTRANGEIRA -> ${c.tabela_ref}.${c.campo_ref})` : "";
+                const notNullStr = c.nao_nulo ? " NOT NULL" : "";
+                tablesMeta += `  - ${c.nome}: ${c.tipoFirebird}${notNullStr}${pkStr}${fkStr}\n`;
+            });
+            tablesMeta += "\n";
+        });
+
+        const templateSelect = document.getElementById('templateSelector');
+        const templateNome = templateSelect.options[templateSelect.selectedIndex].text;
+
+        const prompt = `Você é um desenvolvedor especialista em Pascal, Free Pascal e Lazarus.
+Sua tarefa é gerar um sistema desktop Lazarus completo, estruturado no padrão MVC, para realizar operações CRUD nas tabelas abaixo do banco de dados Firebird 5.
+
+Nome do Projeto: ${projectName}
+Template Visual Inspirado em: ${templateNome}
+
+Tabelas do Banco de Dados:
+${tablesMeta}
+Estrutura do Projeto Lazarus:
+1. Padrão MVC:
+   - **Model**: Uma unit para cada tabela contendo uma classe de entidade (ex: T${toPascalCase(selectedTables[0].nome)}) com propriedades para os campos e métodos para persistência de dados (Salvar, Carregar, Excluir).
+   - **Controller**: Uma unit para cada tabela contendo uma classe controller contendo a lógica de negócios, validação e chamadas para a Model.
+   - **View**: Telas do Lazarus (.pas e .lfm). Cada tabela selecionada deve ter uma tela de listagem (TDBGrid/TListView) e formulário de cadastro com botões (Novo, Editar, Excluir, Gravar, Cancelar) e inputs correspondentes (TEdit, TDateEdit, TSpinEdit).
+2. **DataModule** (udatamodule.pas e udatamodule.lfm):
+   - Deve conter uma conexão TIBConnection (configurada para Firebird), um TSQLTransaction e um TSQLQuery para executar comandos genéricos.
+   - A string de conexão deve ser parametrizada usando variáveis que puxem do banco de dados (Host: ${host}, Database: ${database}, User: ${user}, Password: ${pass}).
+3. **Menu Principal** (vmain.pas e vmain.lfm):
+   - Um formulário principal com um TMainMenu ou botões para abrir cada tela de cadastro.
+4. **Projeto (.lpr e .lpi)**:
+   - O arquivo .lpr deve inicializar o DataModule e o formulário principal.
+   - O arquivo .lpi deve ser um arquivo XML válido de projeto do Lazarus que inclua as dependências 'LCL' e 'SQLDB'.
+
+IMPORTANTE: O seu retorno DEVE ser estritamente um objeto JSON válido, sem qualquer texto explicativo antes ou depois. O JSON deve mapear o nome do arquivo para o seu conteúdo string correspondente. O JSON deve seguir esta estrutura:
+{
+  "${projectName}.lpi": "...",
+  "${projectName}.lpr": "...",
+  "udatamodule.pas": "...",
+  "udatamodule.lfm": "...",
+  "mcliente.pas": "...",
+  "ccliente.pas": "...",
+  "vcliente.pas": "...",
+  "vcliente.lfm": "...",
+  "vmain.pas": "...",
+  "vmain.lfm": "..."
+}`;
+
+        // Configurar Playground
+        const modelMVCVal = document.getElementById('modelSelectorMVC').value;
+        const selectorPlayground = document.getElementById('modelSelector');
+        
+        // Ativar aba playground
+        switchTab('playground', document.querySelectorAll('.tab')[3]);
+        
+        // Copiar o prompt e selecionar o modelo
+        document.getElementById('promptInput').value = prompt;
+        if (modelMVCVal) {
+            selectorPlayground.value = modelMVCVal;
+        }
+
+        logEvent("Prompt com os metadados do banco colado no Playground!");
+    }
+
+    function toPascalCase(str) {
+        if (!str) return '';
+        return str.split('_').map(word => {
+            if (!word) return '';
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }).join('');
+    }
+
+    // Código do Playground Original
+    async function generateResponse() {
+        const model = document.getElementById('modelSelector').value;
+        const prompt = document.getElementById('promptInput').value;
+        const responseBox = document.getElementById('responseBox');
+        const sendBtn = document.getElementById('sendBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const compileBtn = document.getElementById('compileBtn');
+
+        if (!prompt || !model) return;
+
+        responseBox.innerHTML = '<span class="loading">Gerando resposta... Acompanhe o uso da GPU na primeira aba!</span>';
+        sendBtn.disabled = true;
+        saveBtn.style.display = 'none';
+        compileBtn.style.display = 'none';
+
+        try {
+            const response = await fetch('http://localhost:11434/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: prompt,
+                    stream: false 
+                })
+            });
+
+            const data = await response.json();
+            lastGeneratedText = data.response;
+            responseBox.textContent = lastGeneratedText; 
+            
+            saveBtn.style.display = 'block'; 
+            compileBtn.style.display = 'block';
+            
+            logEvent(`Prompt gerado no modelo ${model}.`);
+        } catch (error) {
+            responseBox.innerHTML = `<span style="color:red;">Erro ao gerar: ${error.message}</span>`;
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    function saveToFile() {
+        if (!lastGeneratedText) return;
+        const model = document.getElementById('modelSelector').value;
+        const blob = new Blob([lastGeneratedText], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Resposta_Ollama_${model.replace(':', '_')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    async function compilarCodigoGerado() {
+        if (!lastGeneratedText) return; 
+
+        let codigoLimpo = lastGeneratedText;
+        const expressao = new RegExp("```(?:pascal|freepascal|lazarus)?\\s*([\\s\\S]*?)\\s*```", "i");
+        const match = lastGeneratedText.match(expressao);
+        
+        if (match && match[1]) {
+            codigoLimpo = match[1];
+        }
+
+        try {
+            logEvent("Enviando código para o compilador Lazarus...");
+            
+            const resposta = await fetch('http://localhost:3002/api/compile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codigo_fonte: codigoLimpo })
+            });
+            
+            const dados = await resposta.json();
+            
+            if (dados.sucesso) {
+                logEvent("✅ Compilado com sucesso.");
+                alert(dados.mensagem);
+            } else {
+                logEvent("❌ Erro de compilação.");
+                alert("Erro de compilação:\n\n" + (dados.log || dados.mensagem));
+            }
+        } catch (erro) {
+            alert("Erro ao conectar com a API de compilação.");
+            logEvent("❌ Erro de conexão.");
+        }
+    }
+
+    setInterval(fetchAllData, 1000);
+    setInterval(fetchServerLogs, 2000); 
+    fetchAllData();
+</script>
+
+</body>
+</html>

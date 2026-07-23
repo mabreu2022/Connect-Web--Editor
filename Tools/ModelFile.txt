@@ -1,0 +1,7 @@
+FROM llama3.2:3b
+# Força o Ollama a jogar o máximo de camadas (layers) possíveis na placa de vídeo
+PARAMETER num_gpu 99
+
+# Aumenta o tamanho do "cérebro de curto prazo" do modelo (Padrão é 2048)
+# Quanto maior o contexto, mais VRAM ele consome para manter a conversa ativa
+PARAMETER num_ctx 8192

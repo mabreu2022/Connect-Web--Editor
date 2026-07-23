@@ -13,9 +13,12 @@
     "@monaco-editor/react": "^4.7.0",
     "@types/file-saver": "^2.0.7",
     "axios": "^1.18.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
     "lucide-react": "^1.25.0",
+    "node-firebird": "^2.14.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1"
